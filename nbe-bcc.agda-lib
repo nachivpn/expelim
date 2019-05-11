@@ -1,0 +1,5 @@
+name: nbe-bcc
+depend:
+  standard-library
+include :
+  src

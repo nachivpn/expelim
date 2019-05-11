@@ -23,7 +23,7 @@ mutual
     injr : ∀ {b c}   → Nf a c → Nf a (b + c)
     pair : ∀ {b c}   → Nf a b → Nf a c → Nf a (b * c)
     abs  : ∀ {b c}   → Nf (a * b) c → Nf a (b ⇒ c)
-    case : ∀ {b c C} → Ne a (b + c) → Nf (a * b) C → Nf (a * c) C → Nf a C
+    case : ∀ {b c d} → Ne a (b + c) → Nf (a * b) d → Nf (a * c) d → Nf a d
 
 mutual
 

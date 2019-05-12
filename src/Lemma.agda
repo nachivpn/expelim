@@ -1,4 +1,3 @@
-{-# OPTIONS --allow-unsolved-metas #-}
 module Lemma where
 
 open import Sel
@@ -18,6 +17,32 @@ embdId {a * b} = eq-trans
   (uniq-pair idr idr)
 embdId {a + b} = eq-refl
 
+-- embToBCC preserves composition
+emb-pres-∘ : ∀ {a b c} {x : Sel b a} {y : Sel c b}  →
+           embToBCC (x ∙ y) ≈ embToBCC x ∘ embToBCC y
+emb-pres-∘ {x = x}      {end𝟙}   = eq-sym idr
+emb-pres-∘ {x = x}      {end𝕓}   = eq-sym idr
+emb-pres-∘ {x = x}      {end𝟘}   = eq-sym idr
+emb-pres-∘ {x = x}      {end⇒}   = eq-sym idr
+emb-pres-∘ {x = x}      {end+}   = eq-sym idr
+emb-pres-∘ {x = x}      {drop y} = eq-trans (congr emb-pres-∘) (eq-sym assoc)
+emb-pres-∘ {x = drop x} {keep y} = eq-sym
+  (eq-trans
+    (eq-sym assoc)
+    (eq-trans
+      (congl π₁-pair)
+      (eq-trans assoc (congr (eq-sym emb-pres-∘)))))
+emb-pres-∘ {x = keep x} {keep y} = eq-sym
+  (eq-trans
+    comp-pair
+    (cong-pair
+      (eq-trans
+        (eq-sym assoc)
+        (eq-trans
+          (congl π₁-pair)
+          (eq-trans assoc (congr (eq-sym emb-pres-∘)))))
+      π₂-pair))
+
 -- Recall that wkBCC is the fmap of the BCC presheaf
 -- wkBCC preserves identity in OPE as identity function
 bcc-pres-id : ∀ {a b} {t : BCC a b} → liftBCC iden t ≈ t
@@ -35,7 +60,7 @@ bcc-pres-id {a + a₁} = idr
 -- wkBCC preserves composition in OPE to function composition
 bcc-pres-∘ : ∀ {a b c d} {x : Sel b a} {y : Sel c b} {t : BCC a d} →
   liftBCC (x ∙ y) t ≈ liftBCC y (liftBCC x t)
-bcc-pres-∘ = {!!}
+bcc-pres-∘ {x = x} {y = y} {t = t} = eq-trans (congl emb-pres-∘) assoc
 
 -- naturality law of quotations
 mutual

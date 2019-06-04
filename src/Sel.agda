@@ -4,6 +4,7 @@ open import Type
 open import Util
 open import BCC 
 
+--  Selections are the combinator-equivalent of variables
 data Sel : Ty → Ty → Set where
   end𝟙  : Sel 𝟙 𝟙
   end𝕓  : Sel 𝕓 𝕓
@@ -13,6 +14,7 @@ data Sel : Ty → Ty → Set where
   drop  : ∀ {a b c} → Sel a b → Sel (a * c) b
   keep  : ∀ {a b c} → Sel a b → Sel (a * c) (b * c)
 
+-- the identity selection for each type
 iden : ∀ {a} → Sel a a
 iden {𝕓}      = end𝕓
 iden {𝟙}      = end𝟙
@@ -21,6 +23,7 @@ iden {a ⇒ a₁} = end⇒
 iden {a * a₁} = keep iden
 iden {a + a₁} = end+
 
+-- selections compose
 _∙_ : ∀ {a b c} → Sel b c → Sel a b → Sel a c
 f      ∙ end𝟙   = f
 f      ∙ end𝕓   = f
@@ -31,6 +34,7 @@ f      ∙ drop g = drop (f ∙ g)
 drop f ∙ keep g = drop (f ∙ g)
 keep f ∙ keep g = keep (f ∙ g)
 
+-- selections can be embedded into terms
 embToBCC : ∀ {a b} → Sel a b → BCC a b
 embToBCC end𝟙     = id
 embToBCC end𝕓     = id
@@ -41,6 +45,8 @@ embToBCC (drop e) = embToBCC e ∘ π₁
 embToBCC (keep e) = < embToBCC e ∘ π₁ , π₂ >
 
 open import Relation.Binary.PropositionalEquality using (_≡_ ; refl ; cong)
+
+-- Catyegory of Selections
 
 private
 

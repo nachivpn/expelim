@@ -9,23 +9,23 @@ base : Ty → Set
 base 𝕓 = ⊤
 base _ = ⊥
 
-notFun : Ty → Set
-notFun 𝟘       = ⊤
-notFun 𝟙       = ⊤
-notFun 𝕓       = ⊤
-notFun (_ ⇒ _) = ⊥
-notFun (a * b) = notFun a × notFun b
-notFun (a + b) = notFun a × notFun b
+firstOrd : Ty → Set
+firstOrd 𝟘       = ⊤
+firstOrd 𝟙       = ⊤
+firstOrd 𝕓       = ⊤
+firstOrd (_ ⇒ _) = ⊥
+firstOrd (a * b) = firstOrd a × firstOrd b
+firstOrd (a + b) = firstOrd a × firstOrd b
 
 -- allows "uncurried" functions
 -- i.e,, input and output of function are not functions
 -- strict subformulas (?) must not be functions
-notFun' : Ty → Set
-notFun' 𝟘       = ⊤
-notFun' 𝟙       = ⊤
-notFun' 𝕓       = ⊤
-notFun' (a ⇒ b) = notFun a × notFun b
-notFun' (a * b) = notFun' a × notFun' b
-notFun' (a + b) = notFun' a × notFun' b
+firstOrd' : Ty → Set
+firstOrd' 𝟘       = ⊤
+firstOrd' 𝟙       = ⊤
+firstOrd' 𝕓       = ⊤
+firstOrd' (a ⇒ b) = firstOrd a × firstOrd b
+firstOrd' (a * b) = firstOrd' a × firstOrd' b
+firstOrd' (a + b) = firstOrd' a × firstOrd' b
 
   

@@ -35,22 +35,26 @@ data DBC : (a b : Ty) → Set where
   -- distributivity (needed for qD)
   distr : ∀ {a b c} →  DBC (a * (b + c)) ((a * b) + (a * c))
 
-selSafety : ∀ {a b} → notFun a → Sel a b → notFun b
-selSafety p end𝟙     = tt
-selSafety p end𝕓     = tt
-selSafety p end𝟘     = tt
-selSafety p end⇒     = p
-selSafety p end+     = p
-selSafety p (drop e) = selSafety (proj₁ p) e
-selSafety p (keep e) = selSafety (proj₁ p) e , (proj₂ p)
+-- selections preserve first-orderness
+selSafe : ∀ {a b} → firstOrd a → Sel a b → firstOrd b
+selSafe p end𝟙     = tt
+selSafe p end𝕓     = tt
+selSafe p end𝟘     = tt
+selSafe p end⇒     = p
+selSafe p end+     = p
+selSafe p (drop e) = selSafe (proj₁ p) e
+selSafe p (keep e) = selSafe (proj₁ p) e , (proj₂ p)
 
-neutralSafety : ∀{a b} → notFun a → Ne a b → notFun b
-neutralSafety p (fst n)   = proj₁ (neutralSafety p n)
-neutralSafety p (snd n)   = proj₂ (neutralSafety p n)
-neutralSafety p (app n x) with neutralSafety p n
+-- neutrals preserve first-orderness
+-- (special case of neutrality)
+neutralSafe : ∀{a b} → firstOrd a → Ne a b → firstOrd b
+neutralSafe p (fst n)   = proj₁ (neutralSafe p n)
+neutralSafe p (snd n)   = proj₂ (neutralSafe p n)
+neutralSafe p (app n x) with neutralSafe p n
 ...                       | ()
-neutralSafety p (sel x)   = selSafety p x
+neutralSafe p (sel x)   = selSafe p x
 
+-- selections can be embedded into DBC as well
 embSelD : ∀{a b : Ty} → Sel a b → DBC a b
 embSelD end𝟙     = id
 embSelD end𝕓     = id
@@ -60,9 +64,10 @@ embSelD end+     = id
 embSelD (drop e) = embSelD e ∘ π₁
 embSelD (keep e) = < embSelD e ∘ π₁ , π₂ >
 
+-- quotation of first order normal forms into DBC
 mutual
 
-  qD : ∀{A B : Ty} → notFun A → notFun B → Nf A B → DBC A B
+  qD : ∀{a b : Ty} → firstOrd a → firstOrd b → Nf a b → DBC a b
   qD p q (ne-⊥ x)    = init ∘ qNeD p x
   qD p q unit        = unit
   qD p q (ne-𝕓 x)    = qNeD p x
@@ -73,13 +78,13 @@ mutual
   qD p q (case x m n) = ([ m' , n' ] ∘ distr) ∘ < id , x' >
     where
     x' = qNeD p x
-    m' = qD (p , proj₁ (neutralSafety p x)) q m
-    n' = qD (p , proj₂ (neutralSafety p x)) q n
+    m' = qD (p , proj₁ (neutralSafe p x)) q m
+    n' = qD (p , proj₂ (neutralSafe p x)) q n
 
-  qNeD : ∀{A B : Ty} → notFun A → Ne A B → DBC A B
+  qNeD : ∀{a b : Ty} → firstOrd a → Ne a b → DBC a b
   qNeD p (fst n)   = π₁ ∘ (qNeD p n)
   qNeD p (snd n)   = π₂ ∘ (qNeD p n)
-  qNeD p (app n x) with neutralSafety p n
+  qNeD p (app n x) with neutralSafe p n
   ...                 | ()
   qNeD p (sel x)   = embSelD x
 

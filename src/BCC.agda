@@ -108,7 +108,6 @@ data _≈_ : ∀ {a b} → (f g : BCC a b) → Set where
 -- distributivity laws hold in any BCC (and can be derived in _≈_)
 postulate
   distrfnb : ∀{a b c} → distrb ∘ distrf ≈ id {a * (b + c)}
-  --distrbnf : ∀{a b c} → distrf ∘ distrb ≈ id {(a * b) + (a * c)}
 
 open import Relation.Binary using (Setoid; IsEquivalence) 
 open Setoid renaming (_≈_ to _≈ₑ_)
@@ -211,13 +210,49 @@ comp-match = eq-sym (uniq-match
 
 -- copair laws (useful intermediate step to prove special rules about case)
 
+
 copair-injl : ∀{a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d}
     → copair f g ∘ (id ⊗ injl) ≈  f
-copair-injl = {!!} --doable
+copair-injl {f = f} {g} = begin⟨ Hom _ _ ⟩
+  copair f g ∘ (< id ∘ π₁ , injl ∘ π₂ >)
+    ≈⟨ (eq-sym assoc) ⟩
+  [ f , g ] ∘ (distrf ∘ < id ∘ π₁ , injl ∘ π₂ >)
+    ≈⟨ congl (eq-trans
+       (eq-sym assoc)
+       (congl (eq-trans
+         comp-pair
+         (cong-pair
+           (eq-trans (eq-sym assoc) (eq-trans (congl π₂-pair) (eq-trans assoc (congr match-injl))))
+           (eq-trans π₁-pair idl))))) ⟩
+  [ f , g ] ∘ apply ∘ < curry (injl ∘ < π₂ , π₁ >) ∘ π₂ , π₁ >
+      ≈⟨ congl (congl (cong-pair
+         (eq-trans
+           comp-curry (cong-curry (eq-trans (eq-sym assoc)
+           (congl (congl (cong-pair eq-refl idl))))))
+         eq-refl)) ⟩
+  [ f , g ] ∘ apply ∘ < curry (injl ∘ < π₂ , π₁ > ∘ < π₂ ∘ π₁ , π₂ >) , π₁ >
+    ≈⟨ congl (congl (cong-pair (cong-curry
+      (congl (eq-trans comp-pair (cong-pair π₂-pair π₁-pair))))
+      eq-refl)) ⟩
+  [ f , g ] ∘ apply ∘ < curry (injl ∘ < π₂ , π₂ ∘ π₁ >) , π₁ >
+    ≈⟨ congl (eq-trans (β⇒ _ _) (eq-sym assoc)) ⟩
+  [ f , g ] ∘ injl ∘ (< π₂ , π₂ ∘ π₁ > ∘ < id , π₁ >)
+      ≈⟨ congl (congl (eq-trans
+          comp-pair
+          (cong-pair π₂-pair (eq-trans
+            (eq-sym assoc)
+            (eq-trans (congl π₁-pair) idr)))))⟩
+  [ f , g ] ∘ injl ∘ (< π₁ , π₂ >)
+    ≈⟨ congl (eq-trans (congl (uniq-pair idr idr)) idr) ⟩
+  [ f , g ] ∘ injl
+    ≈⟨ match-injl ⟩
+  f ∎    
+       
+            
 
 copair-injr : ∀{a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d}
     → copair f g ∘ (id ⊗ injr) ≈ g
-copair-injr = {!!} --doable
+copair-injr = {!!} --doable, symmetric to copair-injl
 
 uniq-copair : ∀ {a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d} {h : BCC (a * (b + c)) d}
     → f ≈ h ∘ (id ⊗ injl)

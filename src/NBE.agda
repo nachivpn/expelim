@@ -182,7 +182,7 @@ mutual
   reifyValOr (inj₂ y) = injr (reifyVal y)
 
 reflectᵢ : ∀ (a : Ty) → ⟦ a ⟧ .In a
-reflectᵢ A = reflect A (sel iden)
+reflectᵢ a = reflect a (sel iden)
 
 reify : ∀ {a b : Ty} → (⟦ a ⟧ →̇ ⟦ b ⟧) → Nf a b
 reify {T} f = reifyVal (f (reflectᵢ T))

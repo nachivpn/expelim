@@ -1,5 +1,4 @@
 {-# OPTIONS --postfix-projections #-}
-{-# OPTIONS --allow-unsolved-metas #-}
 
 module BCC where
 
@@ -105,9 +104,12 @@ data _≈_ : ∀ {a b} → (f g : BCC a b) → Set where
   congr : ∀ {a b c} {x y : BCC b c} {f : BCC a b}
     → x ≈ y → x ∘ f ≈ y ∘ f
 
--- distributivity laws hold in any BCC (and can be derived in _≈_)
+-- Distributivity laws hold in any BCC 
+-- Distributivity laws can be derived in _≈_, but the reasoning
+-- is quite standard and boring, so we add it as a postulate here.
 postulate
   distrfnb : ∀{a b c} → distrb ∘ distrf ≈ id {a * (b + c)}
+  -- reverse also holds, but not needed here
 
 open import Relation.Binary using (Setoid; IsEquivalence) 
 open Setoid renaming (_≈_ to _≈ₑ_)
@@ -119,7 +121,6 @@ Hom a b ._≈ₑ_     = _≈_
 Hom a b .isEquivalence .refl  = eq-refl
 Hom a b .isEquivalence .sym   = eq-sym
 Hom a b .isEquivalence .trans = eq-trans
-
 
 import Relation.Binary.SetoidReasoning as SetoidR
 open SetoidR
@@ -163,6 +164,7 @@ comp-⊗ = eq-sym
       (eq-trans
         (eq-sym assoc) (eq-trans (congl π₁-pair) assoc))
         (eq-trans (eq-sym assoc) (congl (eq-trans π₂-pair idl)))))
+
 
 -- standard curry rules
 
@@ -210,12 +212,11 @@ comp-match = eq-sym (uniq-match
 
 -- copair laws (useful intermediate step to prove special rules about case)
 
-
 copair-injl : ∀{a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d}
     → copair f g ∘ (id ⊗ injl) ≈  f
 copair-injl {f = f} {g} = begin⟨ Hom _ _ ⟩
   copair f g ∘ (< id ∘ π₁ , injl ∘ π₂ >)
-    ≈⟨ (eq-sym assoc) ⟩
+    ≈⟨ eq-sym assoc ⟩
   [ f , g ] ∘ (distrf ∘ < id ∘ π₁ , injl ∘ π₂ >)
     ≈⟨ congl (eq-trans
        (eq-sym assoc)
@@ -241,18 +242,50 @@ copair-injl {f = f} {g} = begin⟨ Hom _ _ ⟩
           comp-pair
           (cong-pair π₂-pair (eq-trans
             (eq-sym assoc)
-            (eq-trans (congl π₁-pair) idr)))))⟩
+            (eq-trans (congl π₁-pair) idr))))) ⟩
   [ f , g ] ∘ injl ∘ (< π₁ , π₂ >)
     ≈⟨ congl (eq-trans (congl (uniq-pair idr idr)) idr) ⟩
   [ f , g ] ∘ injl
     ≈⟨ match-injl ⟩
   f ∎    
-       
-            
-
+               
 copair-injr : ∀{a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d}
     → copair f g ∘ (id ⊗ injr) ≈ g
-copair-injr = {!!} --doable, symmetric to copair-injl
+-- symmetric to proof steps in copair-injl
+copair-injr {f = f} {g} = begin⟨ Hom _ _ ⟩
+  copair f g ∘ (< id ∘ π₁ , injr ∘ π₂ >)
+    ≈⟨ eq-sym assoc ⟩
+  [ f , g ] ∘ (distrf ∘ < id ∘ π₁ , injr ∘ π₂ >)
+      ≈⟨ congl (eq-trans
+       (eq-sym assoc)
+       (congl (eq-trans
+         comp-pair
+         (cong-pair
+           (eq-trans (eq-sym assoc) (eq-trans (congl π₂-pair) (eq-trans assoc (congr match-injr))))
+           (eq-trans π₁-pair idl))))) ⟩
+   [ f , g ] ∘ apply ∘ < curry (injr ∘ < π₂ , π₁ >) ∘ π₂ , π₁ >
+       ≈⟨ congl (congl (cong-pair
+         (eq-trans
+           comp-curry (cong-curry (eq-trans (eq-sym assoc)
+           (congl (congl (cong-pair eq-refl idl))))))
+         eq-refl)) ⟩
+  [ f , g ] ∘ apply ∘ < curry (injr ∘ < π₂ , π₁ > ∘ < π₂ ∘ π₁ , π₂ >) , π₁ >
+      ≈⟨ congl (congl (cong-pair (cong-curry
+        (congl (eq-trans comp-pair (cong-pair π₂-pair π₁-pair))))
+        eq-refl)) ⟩
+  [ f , g ] ∘ apply ∘ < curry (injr ∘ < π₂ , π₂ ∘ π₁ >) , π₁ >
+      ≈⟨ congl (eq-trans (β⇒ _ _) (eq-sym assoc)) ⟩
+  [ f , g ] ∘ injr ∘ (< π₂ , π₂ ∘ π₁ > ∘ < id , π₁ >)
+      ≈⟨ congl (congl (eq-trans
+          comp-pair
+          (cong-pair π₂-pair (eq-trans
+            (eq-sym assoc)
+            (eq-trans (congl π₁-pair) idr))))) ⟩
+  [ f , g ] ∘ injr ∘ (< π₁ , π₂ >)
+      ≈⟨ congl (eq-trans (congl (uniq-pair idr idr)) idr) ⟩
+  [ f , g ] ∘ injr
+      ≈⟨ match-injr ⟩
+  g ∎
 
 uniq-copair : ∀ {a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d} {h : BCC (a * (b + c)) d}
     → f ≈ h ∘ (id ⊗ injl)
@@ -283,6 +316,45 @@ comp-copair : ∀ {a b c d e} {f : BCC (a * b) d} {g : BCC (a * c) d} {h : BCC d
 comp-copair = eq-sym (uniq-copair
   (eq-sym (eq-trans (eq-sym assoc) (congl copair-injl)))
   (eq-sym (eq-trans (eq-sym assoc) (congl copair-injr))))
+
+post-comp-copair : ∀ {a b c d e} {f : BCC (a * b) d}
+  {g : BCC (a * c) d} {h : BCC e a}
+  → copair f g ∘ (h ⊗ id) ≈ copair (f ∘ h ⊗ id) (g ∘ h ⊗ id)
+post-comp-copair {f = f} {g} {h} = begin⟨ Hom _ _ ⟩
+  copair f g ∘ (h ⊗ id)
+    ≈⟨ eq-sym (uniq-copair eq-refl eq-refl) ⟩
+  copair
+    ((copair f g ∘ (h ⊗ id)) ∘ (id ⊗ injl))
+    ((copair f g ∘ (h ⊗ id)) ∘ (id ⊗ injr))
+    ≈⟨ cong-copair
+      (eq-trans (eq-sym assoc) (eq-trans (congl swap-⊗) assoc))
+      (eq-trans (eq-sym assoc) (eq-trans (congl swap-⊗) assoc)) ⟩
+  copair
+    ((copair f g ∘ (id ⊗ injl)) ∘ (h ⊗ id))
+    ((copair f g ∘ (id ⊗ injr)) ∘ (h ⊗ id))
+    ≈⟨ cong-copair (congr copair-injl) (congr copair-injr) ⟩
+  copair
+    (f ∘ h ⊗ id)
+    (g ∘ h ⊗ id) ∎
+    where
+      swap-⊗ : ∀{a b c d} {f : BCC a b} {g : BCC c d}
+        → (f ⊗ id) ∘ (id ⊗ g) ≈ (id ⊗ g) ∘ (f ⊗ id)
+      swap-⊗ = eq-trans
+        comp-pair                    -- merge pairs on left
+        (eq-sym (eq-trans comp-pair  -- merge pairs on right
+          (cong-pair
+            -- simplify the first components on both sides till they're equal
+            (eq-trans
+              (congr idl)
+              (eq-trans
+                π₁-pair
+                (eq-sym (eq-trans (eq-sym assoc) (congl (eq-trans π₁-pair idl))))))
+            -- simplify the second component on both sides till they're equal
+            (eq-trans
+              (eq-sym assoc)
+              (eq-trans
+                (congl (eq-trans π₂-pair idl))
+                (eq-sym (eq-trans (congr idl) π₂-pair)))))))
 
 -- standard case rules
 
@@ -324,12 +396,38 @@ comp-caseM = eq-trans assoc (congr comp-copair)
 post-comp-caseM : ∀ {a b c d e} {h : BCC e a}
   {x :  BCC a (b + c)} {f  : BCC (a * b) d} {g : BCC (a * c) d}
   → (caseM x f g) ∘ h ≈ caseM (x ∘ h) (f ∘ h ⊗ id {b}) (g ∘ h ⊗ id)
-post-comp-caseM {h = h} {x} = {!!}
--- KEY step:
--- < id , x > ∘ h 
--- == < h , x ∘ h >
--- == < h ∘ π₁ , π₂ >  ∘ < id , x ∘ h >
--- (by comp-pair {h = < id , x ∘ h >}  {f = h ∘ π₁} {g = π₂})
+post-comp-caseM {h = h} {x} {f} {g} = begin⟨ Hom _ _ ⟩
+  (caseM x f g) ∘ h
+    ≈⟨ eq-sym assoc ⟩
+  copair f g ∘ < id , x > ∘ h
+    ≈⟨ congl comp-pair ⟩
+  copair f g ∘ < id ∘ h , x ∘ h >
+    ≈⟨ congl (cong-pair idl eq-refl) ⟩
+  copair f g ∘ < h , x ∘ h >
+    ≈⟨ congl (eq-trans
+       (cong-pair
+         (eq-sym (eq-trans (eq-sym assoc) (eq-trans (congl π₁-pair) idr)))
+         (eq-sym π₂-pair))
+       (eq-sym (comp-pair {h = < id , x ∘ h >}  {f = h ∘ π₁} {g = π₂}))) ⟩
+  copair f g ∘ < h ∘ π₁ , π₂ > ∘  < id , x ∘ h > 
+    ≈⟨ assoc ⟩
+  (copair f g ∘ < h ∘ π₁ , π₂ >) ∘ < id , x ∘ h > 
+    ≈⟨ congr (eq-sym (uniq-copair
+      (eq-sym (eq-trans
+        (congr
+          (eq-trans
+            (congl (cong-pair eq-refl (eq-sym idl)))
+            post-comp-copair))
+         copair-injl))
+       (eq-sym (eq-trans
+        (congr
+          (eq-trans
+            (congl (cong-pair eq-refl (eq-sym idl)))
+            post-comp-copair))
+         copair-injr)))) ⟩
+  copair (f ∘ h ⊗ id) (g ∘ h ⊗ id) ∘ < id , x ∘ h >
+    ≈⟨ eq-refl ⟩
+  caseM (x ∘ h) (f ∘ h ⊗ id) (g ∘ h ⊗ id) ∎    
 
 
 apply-case : ∀{a b c d e}
@@ -358,6 +456,5 @@ apply-case = eq-sym (eq-trans (eq-sym comp-caseM) (congl (eq-trans η*
           (eq-sym (eq-trans π₁-pair idl))
           (eq-sym (eq-trans π₁-pair idl))))
        π₁-pair
-
 
 

@@ -1,3 +1,9 @@
+------------------------------------------------------------------------
+-- Normalization By Evaluation
+--
+-- Implementation of the normalization function
+------------------------------------------------------------------------
+
 open import Type
 open import Util
 open import BCC
@@ -6,7 +12,9 @@ open import Presheaf
 open import Data.Unit using (tt)
 open import Data.Sum using (inj₁ ; inj₂)
 
--- neutral and normal forms
+------------------------------------------------------------------------
+-- Normal forms (defined by two syntactic categories Ne and Nf)
+
 mutual
 
   data Ne (a : Ty) : Ty → Set where
@@ -24,6 +32,9 @@ mutual
     pair : ∀ {b c}   → Nf a b → Nf a c → Nf a (b * c)
     abs  : ∀ {b c}   → Nf (a * b) c → Nf a (b ⇒ c)
     case : ∀ {b c d} → Ne a (b + c) → Nf (a * b) d → Nf (a * c) d → Nf a d
+
+-- Selections can be pre-composed with normal forms
+-- or, selections "lift" normals/neutrals to a "larger" input
 
 mutual
 
@@ -45,6 +56,38 @@ mutual
 
 open 𝒫
 
+------------------------------------------------------------------------
+-- Decision tree (needed for interpreting sums)
+
+module Tree where
+
+  -- `Tree i A` to be read as a tree value (for some input i)
+  -- which contains values of the type A in its leaves
+  
+  data Tree (i : Ty) (A : 𝒫) : Set where
+  
+    -- a "leaf" with a value
+    leaf   : (x : A .In i) →  Tree i A
+    
+    -- a fake ("dead") leaf constructed using the empty type
+    dead   : Ne i 𝟘 → Tree i A
+
+    -- a decision ("branch") over a value of sum which we don't have
+    branch : ∀{c d} → Ne i (c + d) → Tree (i * c) A →  Tree (i * d) A → Tree i A 
+
+  liftTree : ∀ {A i j} → Sel j i → Tree i A  → Tree j A
+  liftTree {A} e (leaf x)       = leaf (lift A e x)
+  liftTree     e (dead x)       = dead (liftNe e x)
+  liftTree     e (branch x p q) =
+    branch (liftNe e x)
+      (liftTree (keep e) p)
+      (liftTree (keep e) q)
+      
+open Tree
+
+------------------------------------------------------------------------
+-- Presheaf instances (some used for interpreting types)
+
 liftBCC : ∀ {i j a} → Sel j i → BCC i a → BCC j a
 liftBCC e m = m ∘ embToBCC e
 
@@ -59,31 +102,32 @@ Ne' a .lift = liftNe
 Nf' : (a : Ty) → 𝒫
 Nf' a .In i = Nf i a
 Nf' a .lift = liftNf
+ 
+Tree' : (A : 𝒫) → 𝒫
+Tree' A .In i  = Tree i A
+Tree' A .lift    = liftTree
 
--- the decision tree monad
-module TreeMonad where
+------------------------------------------------------------------------
+-- Interpretation of types (as presheaves)
 
-  data Tree (i : Ty) (A : 𝒫) : Set where
-    leaf   : (x : A .In i) →  Tree i A
-    dead   : Ne i 𝟘 → Tree i A
-    -- "semantic case"
-    branch : ∀{c d} → Ne i (c + d) → Tree (i * c) A →  Tree (i * d) A → Tree i A 
+⟦_⟧ : Ty    → 𝒫
+⟦    𝟘    ⟧ = Tree' 𝟘'
+⟦    𝟙    ⟧ = 𝟙'
+⟦    𝕓    ⟧ = Nf' 𝕓
+⟦  a ⇒ b  ⟧ = ⟦ a ⟧ ⇒' ⟦ b ⟧
+⟦  a * b  ⟧ = ⟦ a ⟧ ×' ⟦ b ⟧
+⟦  a + b  ⟧ = Tree' (⟦ a ⟧ +' ⟦ b ⟧)
 
-  liftTree : ∀ {A i j} → Sel j i → Tree i A  → Tree j A
-  liftTree {A} e (leaf x)       = leaf (lift A e x)
-  liftTree     e (dead x)       = dead (liftNe e x)
-  liftTree     e (branch x p q) =
-    branch (liftNe e x)
-      (liftTree (keep e) p)
-      (liftTree (keep e) q)
+------------------------------------------------------------------------
+-- Operations on trees
+
+module TreeOps where
+
+  -- Tree' is a monad on presheaves
   
-  Tree' : (A : 𝒫) → 𝒫
-  Tree' A .In i  = Tree i A
-  Tree' A .lift    = liftTree
-
   return : ∀ {A} → A →̇ Tree' A
   return = leaf
-  
+
   map : ∀ {A B : 𝒫} → (A →̇ B) → Tree' A →̇ Tree' B
   map t (leaf x)       = leaf (t x)
   map t (dead x)       = dead x
@@ -94,28 +138,19 @@ module TreeMonad where
   join (dead x)       = dead x
   join (branch x p q) = branch x (join p) (join q)
 
-open TreeMonad
-
--- interpretation of types as presheaves
-⟦_⟧ : Ty → 𝒫
-⟦    𝟘   ⟧ = Tree' 𝟘'
-⟦    𝟙   ⟧ = 𝟙'
-⟦    𝕓   ⟧ = Nf' 𝕓
-⟦ a ⇒ b ⟧ = ⟦ a ⟧ ⇒' ⟦ b ⟧
-⟦ a * b ⟧ = ⟦ a ⟧ ×' ⟦ b ⟧
-⟦ a + b ⟧ = Tree' (⟦ a ⟧ +' ⟦ b ⟧)
-
--- special tree operations
-module TreeOps where
-
+  -- Trees containing normal forms (in leaves) can be converted to a normal form
+  -- This is perhaps the most important operation on trees!
+  -- (sometimes called "collect" / "pasteNf" etc.)
+  
   runTreeNf : ∀ {a} → Tree' (Nf' a) →̇ Nf' a
-  runTreeNf (leaf x)      = x
-  runTreeNf (dead x)      = ne-⊥ x
+  runTreeNf (leaf x)       = x
+  runTreeNf (dead x)       = ne-⊥ x
   runTreeNf (branch x p q) = case x (runTreeNf p) (runTreeNf q)
 
   mutual
 
     -- (Tree c ⟦_⟧) is an "applicative functor"
+    
     apTree : ∀ {a b c} → Tree c ⟦ a ⇒ b ⟧ → Tree c ⟦ a ⟧ → Tree c ⟦ b ⟧
     apTree {A} {B} (leaf x)       c = leaf (x iden (runTree {A} c))
     apTree {A} {B} (dead x)       c = dead x
@@ -123,7 +158,9 @@ module TreeOps where
       branch x
         (apTree {A} {B} f (lift (Tree' ⟦ A ⟧) (drop iden) c))
         (apTree {A} {B} g (lift (Tree' ⟦ A ⟧) (drop iden) c))
-  
+
+    -- Semantic values from decision trees can be extracted
+    
     runTree : ∀ {a} → Tree' ⟦ a ⟧ →̇ ⟦ a ⟧
     runTree {𝟘}     c = join c
     runTree {𝟙}     _ = tt
@@ -134,13 +171,22 @@ module TreeOps where
 
 open TreeOps
 
+-- 𝟘' is the initial presheaf
+-- i.e., a value of 𝟘' allows us to produce anything
+
 cast : ∀ A → 𝟘' →̇ A
 cast _ ()
 
-match' : ∀{a b c} → (⟦ a ⟧ →̇ ⟦ c ⟧) → (⟦ b ⟧ →̇ ⟦ c ⟧) → ((⟦ a ⟧ +' ⟦ b ⟧) →̇ ⟦ c ⟧)
+match' : ∀{a b c}
+  → (⟦ a ⟧ →̇ ⟦ c ⟧)
+  → (⟦ b ⟧ →̇ ⟦ c ⟧)
+  → (⟦ a ⟧ +' ⟦ b ⟧) →̇ ⟦ c ⟧
 match' f g (inj₁ x) = f x
 match' f g (inj₂ y) = g y
-    
+
+------------------------------------------------------------------------
+-- Evaluation (of terms into their interpretation)
+
 eval : ∀ {b a} → BCC a b → (⟦ a ⟧ →̇ ⟦ b ⟧)
 eval id x                    = x
 eval (t ∘ s) x               = (eval t) (eval s x)
@@ -157,8 +203,15 @@ eval {c} {a + b} [ p , q ] x =
   runTree {c}
     (map (match' {a} {b} {c} (eval p) (eval q)) x)
 
+------------------------------------------------------------------------
+-- Reification (of term interpretations to normal form)
+
+-- `reflect` and `reifyVal` are used to implement `reify` later
+
 mutual
 
+  -- Convert neutrals to semantic values
+  
   reflect : ∀ (a : Ty) → Ne' a →̇ ⟦ a ⟧
   reflect 𝟘 x       = dead x
   reflect 𝟙 x       = tt
@@ -169,6 +222,8 @@ mutual
     (leaf (inj₁ (reflect a (snd (sel iden)))))
     (leaf (inj₂ (reflect b (snd (sel iden)))))
 
+  -- Reify semantic values into normal forms
+  
   reifyVal : ∀ {a : Ty} → ⟦ a ⟧ →̇ Nf' a
   reifyVal {𝟘} t           = runTreeNf (map (cast (Nf' 𝟘)) t)
   reifyVal {𝟙} t           = unit
@@ -176,21 +231,30 @@ mutual
   reifyVal {A ⇒ A₁} f      = abs (reifyVal (f (drop iden) (reflect A (snd (sel iden)))))
   reifyVal {T * A} (p , q) = pair (reifyVal p) (reifyVal q)
   reifyVal {A + B} t       = runTreeNf (map reifyValOr t)
-  
+
   reifyValOr : ∀ {a b} → (⟦ a ⟧ +' ⟦ b ⟧) →̇ Nf' (a + b)
   reifyValOr (inj₁ x) = injl (reifyVal x)
   reifyValOr (inj₂ y) = injr (reifyVal y)
 
+
+-- Identity reflection
+
 reflectᵢ : ∀ (a : Ty) → ⟦ a ⟧ .In a
 reflectᵢ a = reflect a (sel iden)
 
+-- Reification
+
 reify : ∀ {a b : Ty} → (⟦ a ⟧ →̇ ⟦ b ⟧) → Nf a b
-reify {T} f = reifyVal (f (reflectᵢ T))
-    
+reify {a} f = reifyVal (f (reflectᵢ a))
+
+------------------------------------------------------------------------
+-- Normalization
+
 norm : ∀ {a : Ty} → BCC' a →̇ Nf' a
 norm t = reify (eval t)
 
--- quotations
+-- Embedding (or "quotation") of normal forms into terms
+
 mutual
 
   qₓ : ∀ {a} → Ne' a →̇ BCC' a
@@ -208,3 +272,7 @@ mutual
   q (pair n n₁)   = < q n , q n₁ >
   q (abs n)       = curry (q n)
   q (case x n n₁) = caseM (qₓ x) (q n) (q n₁)
+
+norm′ :  ∀ {a : Ty} → BCC' a →̇ BCC' a
+norm′ t = q (norm t)
+

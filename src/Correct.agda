@@ -1,4 +1,8 @@
-module Correct where
+-------------------------------------------------------------------------
+-- Normalization By Evaluation
+--
+-- Correctness of the normalization function (i.e., it preserves meaning)
+-------------------------------------------------------------------------
 
 open import Sel
 open import BCC
@@ -16,18 +20,32 @@ open import Data.Product
   using (_×_ ; _,_ ; proj₁ ; proj₂ ; Σ ; ∃ ; ∃₂)
   
 open 𝒫
-open NBE.TreeMonad
+open NBE.Tree
 open NBE.TreeOps
+
+-- `Sem i B` to be read as a semantic value of B for some input i
 
 Sem : Ty → 𝒫 → Set
 Sem x y = In y x
 
--- relation for induction on tree values
-Rt : ∀ {a b B}
-  → (Rl : ∀ {i} → BCC i b → Sem i B → Set) 
+------------------------------------------------------------------------
+-- Logical relations
+
+
+-- Logical relations between terms and trees
+-- to enable reasoning by induction on tree values containing
+-- leaves of different types (precisely, of diff. presheafs)
+
+Rt : {a b : Ty} {B : 𝒫}
+
+  -- (Index) Relation for the values on the leaves of trees 
+  → (Rl : ∀ {i} → BCC i b → Sem i B → Set)
+
+  -- The relation
   → BCC a b
   → Tree a B
   → Set
+  
 Rt Rl t (leaf a)         = Rl t a
 Rt Rl t (dead x)         = t ≈ init ∘ qₓ x
 Rt Rl t (branch x c₁ c₂) =
@@ -36,15 +54,18 @@ Rt Rl t (branch x c₁ c₂) =
     × (Rt Rl t₂ c₂)
     × (t ≈ caseM (qₓ x) t₁ t₂)
 
+-- Logical relations for the empty type
+
 Rl₀ : ∀ {a} → BCC a 𝟘 → Sem a 𝟘' → Set
 Rl₀ _ = ⊥-elim'
-  
+
 R₀ : ∀ {a} → BCC a 𝟘 → Tree a 𝟘' → Set
 R₀ t c = Rt Rl₀ t c
 
 mutual
 
-  -- logical relation between terms and semantic values
+  -- Logical relation between terms and semantic values (of the same type)
+  
   R : ∀ {a b} → BCC a b → Sem a ⟦ b ⟧ → Set
   R {a} {b = 𝕓} t v =
     t ≈ q v
@@ -59,6 +80,8 @@ mutual
   R {a} {b + c} t v =
    R₊ t v
 
+  -- Logical relations for sums
+  
   Rl₊ : ∀ {a b c} → BCC a (b + c) → Sem a ⟦ b ⟧ ⊎ Sem a ⟦ c ⟧ → Set
   Rl₊ t (inj₁ x) = ∃ (λ t' → R t' x × (injl ∘ t' ≈ t))
   Rl₊ t (inj₂ y) = ∃ (λ t' → R t' y × (injr ∘ t' ≈ t))
@@ -66,12 +89,16 @@ mutual
   R₊ : ∀ {a b c} → BCC a (b + c) → Tree a (⟦ b ⟧ +' ⟦ c ⟧) → Set
   R₊ t c = Rt Rl₊ t c   
 
--- Rt indexed by R
+-- Special cases of Rt to ease reasoning
+
 Rt' : ∀ {a b} → BCC a b → Tree a ⟦ b ⟧ → Set
 Rt' = Rt R
 
 Rtn : ∀ {a b} → BCC a b → Tree a (Nf' b) → Set
 Rtn = Rt (λ t v → t ≈ q v)
+
+------------------------------------------------------------------------
+-- Invariance (of ≈ under logical relations)
 
 inv₀ : ∀ {a} {t t' : BCC a 𝟘}
   → (v : Tree a 𝟘')
@@ -107,6 +134,9 @@ inv {b * b₁}    p q =
   inv {b} (congl p) (proj₁ q) , inv {b₁} (congl p) (proj₂ q)
 inv {b = _ + _} {v = v} p q =
   inv+ v p q
+
+------------------------------------------------------------------------
+-- Preservation of relations by lifting
 
 liftConv : ∀ {a b c} {t t' : BCC a b} 
   → (τ : Sel c a)
@@ -172,9 +202,8 @@ liftPresRt' : ∀{b a c}
   → Rt'(liftBCC τ t) (liftTree τ v)
 liftPresRt' {b} v τ p = liftPresRt v τ p (λ σ x → liftPresR {b} σ x)
 
----------------------------------------
--- correctness of various operations --
----------------------------------------
+------------------------------------------------------------------------
+-- Correctness of various operations (natural transformations)
 
 corrJoin : ∀ {a b B} (t : BCC a b) (v : Tree a (Tree' B))
   → {P : ∀ {c} → BCC c b → Sem c B → Set}
@@ -313,12 +342,14 @@ corr-𝟘-elim {c} {u = u} {v = v} p =
     (init ∘ t₁) , (init ∘ t₂) ,
     aux-lemma v₁ p , (aux-lemma v₂ q , trans (congl r) comp-caseM)
 
+------------------------------------------------------------------------
+-- The fundamental theorem of R (or, correctness of evaluation)
+
 Fund : {b c : Ty} (t : BCC b c) → Set
 Fund {b} {c} t = ∀ {a} {u : BCC a b} {v : Sem a ⟦ b ⟧}
   → R u v
   → R (t ∘ u) (eval t v)
-  
--- the fundamental theorem of R
+
 corrEval : ∀{c b}
   → (t : BCC b c)
   → Fund t
@@ -377,6 +408,9 @@ corrEval {c} [ t₁ , t₂ ] {v = v} p = corrRunTree {c} _ _ (corrMatch' t₁ t�
     corrMatch' t₁ t₂ v₁ p ,
     corrMatch' t₁ t₂ v₂ q ,
     trans (congl r) comp-caseM
+
+------------------------------------------------------------------------
+-- Correctness of reification (and helpers)
 
 corrReify₀ : ∀ {a} {t : BCC a 𝟘} (v : Tree a 𝟘') →
   R₀ t v →
@@ -442,5 +476,8 @@ corrReify : ∀ {a b}
   → t ≈ q (reify (eval t))
 corrReify {a} {b} f = corrReifyVal (inv {b} (sym idr) (f (corrReflectᵢ a)))
 
-correctNorm : ∀{a b} (t : BCC a b) → t ≈ q (norm t)
-correctNorm {a} {b} t = corrReify (corrEval t)
+------------------------------------------------------------------------
+-- Correctness of normalization
+
+correctNorm : ∀ {a b} (t : BCC a b) → t ≈ q (norm t)
+correctNorm t = corrReify (corrEval t)

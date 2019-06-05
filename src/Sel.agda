@@ -5,6 +5,8 @@ open import Util
 open import BCC 
 
 --  Selections are the combinator-equivalent of variables
+-- `Sel i j` to be read as a selection of j from i (or j ⊑ i)
+
 data Sel : Ty → Ty → Set where
   end𝟙  : Sel 𝟙 𝟙
   end𝕓  : Sel 𝕓 𝕓
@@ -46,7 +48,7 @@ embToBCC (keep e) = < embToBCC e ∘ π₁ , π₂ >
 
 open import Relation.Binary.PropositionalEquality using (_≡_ ; refl ; cong)
 
--- Catyegory of Selections
+-- Category of Selections
 
 private
 

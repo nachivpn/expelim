@@ -1,4 +1,9 @@
 {-# OPTIONS --postfix-projections #-}
+------------------------------------------------------------------------
+-- Term language of BCC combinators
+--
+-- Term syntax, typing, conversion rules and derived laws
+------------------------------------------------------------------------
 
 module BCC where
 

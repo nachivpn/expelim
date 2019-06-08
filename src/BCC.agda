@@ -13,6 +13,9 @@ open import Util
 infixr 4 _∘_
 infixr 3 <_,_>
 
+------------------------------------------------------------------------
+-- Term language of BCC combinators
+
 data BCC : (a b : Ty) → Set where
 
   -- Category morphisms
@@ -39,29 +42,45 @@ data BCC : (a b : Ty) → Set where
   curry : ∀ {a b c} → BCC (c * a) b → BCC c (a ⇒ b)
   apply : ∀ {a b}  → BCC ((a ⇒ b) * a) b
 
+------------------------------------------------------------------------
+-- Derived BCC combinators
+
+-- Product of two morphisms
 
 _⊗_ : ∀{a b c d} → BCC a b → BCC c d → BCC (a * c) (b * d)
 f ⊗ g = < (f ∘ π₁) , (g ∘ π₂) >
 
+-- Uncurry (as in lambda calculus, where `c` is the environment)
+
 uncurry : ∀{c a b} → BCC c (a ⇒ b) → BCC (c * a) b
 uncurry f = apply ∘ (f ⊗ id)
 
--- | Distribute * over +
+-- Distribute * over + (forth)
+
 distrf : ∀ {a b c} → BCC (a * (b + c)) ((a * b) + (a * c))
 distrf = apply ∘
     < [ curry (injl ∘ < π₂ , π₁ >)
     , curry (injr ∘ < π₂ , π₁ >) ] ∘ π₂
     , π₁ >
 
--- | Distribute * over + (reverse)
+-- Distribute * over + (back)
+
 distrb : ∀ {a b c} → BCC ((a * b) + (a * c)) (a * (b + c))
 distrb = [ < π₁ , injl ∘ π₂ > , < π₁ , injr ∘ π₂ > ]
 
-copair : ∀ {a b c d} → BCC (a * b) d -> BCC (a * c) d -> BCC (a * (b + c)) d
-copair f g = [ f , g ] ∘ distrf
+-- Match ([_,_]) with an environment
+-- Used as an intermediate step to implement and reason about `caseM`
+
+matchE : ∀ {a b c d} → BCC (a * b) d -> BCC (a * c) d -> BCC (a * (b + c)) d
+matchE f g = [ f , g ] ∘ distrf
+
+-- Lambda calculus-like case for pattern matching
 
 caseM : ∀ {a b c d} → BCC a (b + c) → BCC (a * b) d -> BCC (a * c) d -> BCC a d
-caseM x f g = copair f g ∘ < id , x >
+caseM x f g = matchE f g ∘ < id , x >
+
+------------------------------------------------------------------------
+-- Equational theory / conversion rules for BCC combinators
 
 infix 2 _≈_
 
@@ -123,14 +142,26 @@ data _≈_ : ∀ {a b} → (f g : BCC a b) → Set where
   congr : ∀ {a b c} {x y : BCC b c} {f : BCC a b}
     → x ≈ y → x ∘ f ≈ y ∘ f
 
--- Distributivity laws hold in any BCC 
--- Distributivity laws can be derived in _≈_, but the reasoning
--- is quite standard and boring, so we add it as a postulate here.
-postulate
-  distrfnb : ∀{a b c} → distrb ∘ distrf ≈ id {a * (b + c)}
-  -- reverse also holds, but not needed here
 
--- boilerplate to use the setoid library for eq. reasoning
+------------------------------------------------------------------------
+-- Distributivity law
+
+{- 
+  Distributivity laws can be derived in _≈_, but the reasoning
+  is quite standard and boring---so we add it as a postulate here.
+-}
+
+postulate
+
+  -- Distribute forth and back
+  distrfnb : ∀{a b c} → distrb ∘ distrf ≈ id {a * (b + c)}
+  
+  -- reverse (distrbnf) also holds, but not needed here
+
+
+------------------------------------------------------------------------
+-- Boilerplate to use the setoid library for eq. reasoning
+
 module SetoidUtil where
 
   open import Relation.Binary
@@ -152,7 +183,8 @@ module SetoidUtil where
 
 open SetoidUtil 
 
--- standard pair rules
+------------------------------------------------------------------------
+-- Standard pair laws
 
 comp-pair : ∀{a b c d} {h : BCC d c} {f : BCC c a} {g : BCC c b}
   → < f , g > ∘ h ≈ < (f ∘ h) , (g ∘ h) >
@@ -167,13 +199,15 @@ cong-pair p q = uniq-pair
   (trans π₁-pair (sym p))
   (trans π₂-pair (sym q))
 
--- standard ∘ rules
+------------------------------------------------------------------------
+-- Standard ∘ laws
 
 cong-∘ : ∀{a b c} → {f f' : BCC a b} {g g' : BCC c a}
   → f ≈ f' → g ≈ g' → f ∘ g ≈ f' ∘ g'
 cong-∘ p q = trans (congr p) (congl q)
 
--- standard ⊗ rules
+------------------------------------------------------------------------
+-- Standard ⊗ laws
 
 cong-⊗ : ∀{a b c d} → {f f' : BCC a b} {g g' : BCC c d}
   → f ≈ f' → g ≈ g' → f ⊗ g ≈ f' ⊗ g'
@@ -191,7 +225,8 @@ comp-⊗ = sym
         (sym assoc) (trans (congl π₁-pair) assoc))
         (trans (sym assoc) (congl (trans π₂-pair idl)))))
 
--- standard curry rules
+------------------------------------------------------------------------
+-- Standard curry laws
 
 cong-curry : ∀{a b c} → {f f' : BCC (a * b) c}
   → f ≈ f' → curry f ≈ curry f'
@@ -204,7 +239,8 @@ comp-curry = sym (uniq-curry
     (congl comp-⊗)
     (trans assoc (congr apply-curry))))
 
--- standard match rules
+------------------------------------------------------------------------
+-- Standard match laws
 
 cong-match : ∀ {a b c} {f f' : BCC a c} {g g' : BCC b c}
   → f ≈ f'
@@ -220,7 +256,8 @@ comp-match = sym (uniq-match
   (trans (sym assoc) (congl match-injl))
   ((trans (sym assoc) (congl match-injr))))
 
--- beta reduction (useful lemma)
+------------------------------------------------------------------------
+-- Beta-reduction (useful lemma)
 
 β⇒  : ∀ {a b c} (f : BCC (c * a) b) (g : BCC c a)
   → apply ∘ < (curry f) , g > ≈ (f ∘ < id , g >)
@@ -235,12 +272,13 @@ comp-match = sym (uniq-match
     assoc)
   (congr apply-curry)
 
--- copair laws (useful intermediate step to prove special rules about case)
+------------------------------------------------------------------------
+-- MatchE laws
 
-copair-injl : ∀{a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d}
-    → copair f g ∘ (id ⊗ injl) ≈  f
-copair-injl {f = f} {g} = begin⟨ Hom _ _ ⟩
-  copair f g ∘ (< id ∘ π₁ , injl ∘ π₂ >)
+matchE-injl : ∀{a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d}
+    → matchE f g ∘ (id ⊗ injl) ≈  f
+matchE-injl {f = f} {g} = begin⟨ Hom _ _ ⟩
+  matchE f g ∘ (< id ∘ π₁ , injl ∘ π₂ >)
     ≈⟨ sym assoc ⟩
   [ f , g ] ∘ (distrf ∘ < id ∘ π₁ , injl ∘ π₂ >)
     ≈⟨ congl (trans
@@ -274,11 +312,11 @@ copair-injl {f = f} {g} = begin⟨ Hom _ _ ⟩
     ≈⟨ match-injl ⟩
   f ∎    
                
-copair-injr : ∀{a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d}
-    → copair f g ∘ (id ⊗ injr) ≈ g
--- symmetric to proof steps in copair-injl
-copair-injr {f = f} {g} = begin⟨ Hom _ _ ⟩
-  copair f g ∘ (< id ∘ π₁ , injr ∘ π₂ >)
+matchE-injr : ∀{a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d}
+    → matchE f g ∘ (id ⊗ injr) ≈ g
+-- symmetric to proof steps in matchE-injl
+matchE-injr {f = f} {g} = begin⟨ Hom _ _ ⟩
+  matchE f g ∘ (< id ∘ π₁ , injr ∘ π₂ >)
     ≈⟨ sym assoc ⟩
   [ f , g ] ∘ (distrf ∘ < id ∘ π₁ , injr ∘ π₂ >)
       ≈⟨ congl (trans
@@ -312,11 +350,11 @@ copair-injr {f = f} {g} = begin⟨ Hom _ _ ⟩
       ≈⟨ match-injr ⟩
   g ∎
 
-uniq-copair : ∀ {a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d} {h : BCC (a * (b + c)) d}
+uniq-matchE : ∀ {a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d} {h : BCC (a * (b + c)) d}
     → f ≈ h ∘ (id ⊗ injl)
     → g ≈ h ∘ (id ⊗ injr)
-    → copair f g ≈ h
-uniq-copair p q = trans
+    → matchE f g ≈ h
+uniq-matchE p q = trans
   (congr (trans (cong-match p q) (sym comp-match)))
   (trans
     (sym assoc)
@@ -325,42 +363,44 @@ uniq-copair p q = trans
         (congr (cong-match (cong-pair idl refl) (cong-pair idl refl)))
         distrfnb))
       idr))
+      
+------------------------------------------------------------------------
+-- Standard-ish matchE laws
 
--- standard copair laws
-
-cong-copair : ∀ {a b c d} {f f' : BCC (a * b) d} {g g' : BCC (a * c) d}
+cong-matchE : ∀ {a b c d} {f f' : BCC (a * b) d} {g g' : BCC (a * c) d}
   → f ≈ f'
   → g ≈ g'
-  → copair f g ≈ copair f' g'
-cong-copair p q = uniq-copair
-  (trans p (sym copair-injl))
-  (trans q (sym copair-injr))  
+  → matchE f g ≈ matchE f' g'
+cong-matchE p q = uniq-matchE
+  (trans p (sym matchE-injl))
+  (trans q (sym matchE-injr))  
 
-comp-copair : ∀ {a b c d e} {f : BCC (a * b) d} {g : BCC (a * c) d} {h : BCC d e}
-  → h ∘ copair f g ≈ copair (h ∘ f) (h ∘ g)
-comp-copair = sym (uniq-copair
-  (sym (trans (sym assoc) (congl copair-injl)))
-  (sym (trans (sym assoc) (congl copair-injr))))
+comp-matchE : ∀ {a b c d e} {f : BCC (a * b) d} {g : BCC (a * c) d} {h : BCC d e}
+  → h ∘ matchE f g ≈ matchE (h ∘ f) (h ∘ g)
+comp-matchE = sym (uniq-matchE
+  (sym (trans (sym assoc) (congl matchE-injl)))
+  (sym (trans (sym assoc) (congl matchE-injr))))
 
--- special copair law
+------------------------------------------------------------------------
+-- Special matchE law
 
-post-comp-copair : ∀ {a b c d e} {f : BCC (a * b) d}
+post-comp-matchE : ∀ {a b c d e} {f : BCC (a * b) d}
   {g : BCC (a * c) d} {h : BCC e a}
-  → copair f g ∘ (h ⊗ id) ≈ copair (f ∘ h ⊗ id) (g ∘ h ⊗ id)
-post-comp-copair {f = f} {g} {h} = begin⟨ Hom _ _ ⟩
-  copair f g ∘ (h ⊗ id)
-    ≈⟨ sym (uniq-copair refl refl) ⟩
-  copair
-    ((copair f g ∘ (h ⊗ id)) ∘ (id ⊗ injl))
-    ((copair f g ∘ (h ⊗ id)) ∘ (id ⊗ injr))
-    ≈⟨ cong-copair
+  → matchE f g ∘ (h ⊗ id) ≈ matchE (f ∘ h ⊗ id) (g ∘ h ⊗ id)
+post-comp-matchE {f = f} {g} {h} = begin⟨ Hom _ _ ⟩
+  matchE f g ∘ (h ⊗ id)
+    ≈⟨ sym (uniq-matchE refl refl) ⟩
+  matchE
+    ((matchE f g ∘ (h ⊗ id)) ∘ (id ⊗ injl))
+    ((matchE f g ∘ (h ⊗ id)) ∘ (id ⊗ injr))
+    ≈⟨ cong-matchE
       (trans (sym assoc) (trans (congl swap-⊗) assoc))
       (trans (sym assoc) (trans (congl swap-⊗) assoc)) ⟩
-  copair
-    ((copair f g ∘ (id ⊗ injl)) ∘ (h ⊗ id))
-    ((copair f g ∘ (id ⊗ injr)) ∘ (h ⊗ id))
-    ≈⟨ cong-copair (congr copair-injl) (congr copair-injr) ⟩
-  copair
+  matchE
+    ((matchE f g ∘ (id ⊗ injl)) ∘ (h ⊗ id))
+    ((matchE f g ∘ (id ⊗ injr)) ∘ (h ⊗ id))
+    ≈⟨ cong-matchE (congr matchE-injl) (congr matchE-injr) ⟩
+  matchE
     (f ∘ h ⊗ id)
     (g ∘ h ⊗ id) ∎
     where
@@ -382,8 +422,9 @@ post-comp-copair {f = f} {g} {h} = begin⟨ Hom _ _ ⟩
               (trans
                 (congl (trans π₂-pair idl))
                 (sym (trans (congr idl) π₂-pair)))))))
-
--- standard case rules
+                
+------------------------------------------------------------------------
+-- Standard case laws
 
 cong-caseM : ∀ {a b c d}
   {x x' :  BCC a (b + c)} {f f' : BCC (a * b) d} {g g' : BCC (a * c) d}
@@ -391,14 +432,15 @@ cong-caseM : ∀ {a b c d}
   → f ≈ f'
   → g ≈ g'
   → caseM x f g ≈ caseM x' f' g'
-cong-caseM p q r = cong-∘ (cong-copair q r) (cong-pair refl p)
+cong-caseM p q r = cong-∘ (cong-matchE q r) (cong-pair refl p)
 
 comp-caseM : ∀ {a b c d e} {h : BCC d e}
   {x :  BCC a (b + c)} {f  : BCC (a * b) d} {g : BCC (a * c) d}
   → h ∘ (caseM x f g) ≈ caseM x (h ∘ f) (h ∘ g)
-comp-caseM = trans assoc (congr comp-copair)
+comp-caseM = trans assoc (congr comp-matchE)
 
--- eta rules
+------------------------------------------------------------------------
+-- Eta laws
 
 η⇒ : ∀{a b c} → {f : BCC a (b ⇒ c)}
   → f ≈ curry (uncurry f)
@@ -413,12 +455,16 @@ comp-caseM = trans assoc (congr comp-copair)
 η+ = sym
   (trans
     (congr
-      (uniq-copair
+      (uniq-matchE
         (sym π₂-pair)
         (sym π₂-pair)))
     π₂-pair)
 
--- special case rules
+------------------------------------------------------------------------
+-- Special case laws
+
+
+
 
 post-comp-caseM : ∀ {a b c d e} {h : BCC e a}
   {x :  BCC a (b + c)} {f  : BCC (a * b) d} {g : BCC (a * c) d}
@@ -426,33 +472,33 @@ post-comp-caseM : ∀ {a b c d e} {h : BCC e a}
 post-comp-caseM {h = h} {x} {f} {g} = begin⟨ Hom _ _ ⟩
   (caseM x f g) ∘ h
     ≈⟨ sym assoc ⟩
-  copair f g ∘ < id , x > ∘ h
+  matchE f g ∘ < id , x > ∘ h
     ≈⟨ congl comp-pair ⟩
-  copair f g ∘ < id ∘ h , x ∘ h >
+  matchE f g ∘ < id ∘ h , x ∘ h >
     ≈⟨ congl (cong-pair idl refl) ⟩
-  copair f g ∘ < h , x ∘ h >
+  matchE f g ∘ < h , x ∘ h >
     ≈⟨ congl (trans
        (cong-pair
          (sym (trans (sym assoc) (trans (congl π₁-pair) idr)))
          (sym π₂-pair))
        (sym (comp-pair {h = < id , x ∘ h >}  {f = h ∘ π₁} {g = π₂}))) ⟩
-  copair f g ∘ < h ∘ π₁ , π₂ > ∘  < id , x ∘ h > 
+  matchE f g ∘ < h ∘ π₁ , π₂ > ∘  < id , x ∘ h > 
     ≈⟨ assoc ⟩
-  (copair f g ∘ < h ∘ π₁ , π₂ >) ∘ < id , x ∘ h > 
-    ≈⟨ congr (sym (uniq-copair
+  (matchE f g ∘ < h ∘ π₁ , π₂ >) ∘ < id , x ∘ h > 
+    ≈⟨ congr (sym (uniq-matchE
       (sym (trans
         (congr
           (trans
             (congl (cong-pair refl (sym idl)))
-            post-comp-copair))
-         copair-injl))
+            post-comp-matchE))
+         matchE-injl))
        (sym (trans
         (congr
           (trans
             (congl (cong-pair refl (sym idl)))
-            post-comp-copair))
-         copair-injr)))) ⟩
-  copair (f ∘ h ⊗ id) (g ∘ h ⊗ id) ∘ < id , x ∘ h >
+            post-comp-matchE))
+         matchE-injr)))) ⟩
+  matchE (f ∘ h ⊗ id) (g ∘ h ⊗ id) ∘ < id , x ∘ h >
     ≈⟨ refl ⟩
   caseM (x ∘ h) (f ∘ h ⊗ id) (g ∘ h ⊗ id) ∎    
 
@@ -479,7 +525,7 @@ apply-case = sym (trans (sym comp-caseM) (congl (trans η*
   useless-case =
     trans
       (congr
-        (uniq-copair
+        (uniq-matchE
           (sym (trans π₁-pair idl))
           (sym (trans π₁-pair idl))))
        π₁-pair

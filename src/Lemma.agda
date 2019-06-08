@@ -9,8 +9,12 @@ open import BCC
 open import NBE
 open import Type
 
--- embToBCC is a functor (map) which maps embeddings to BCC terms
--- it preserves identity
+
+------------------------------------------------------------------------
+-- `embToBCC` is a functor
+
+-- embToBCC preserves identity
+
 embdId : ∀ {a} → embToBCC (iden {a}) ≈ id {a} 
 embdId {𝕓}     = refl
 embdId {𝟙}     = refl
@@ -22,6 +26,7 @@ embdId {a * b} = trans
 embdId {a + b} = refl
 
 -- embToBCC preserves composition
+
 emb-pres-∘ : ∀ {a b c} {x : Sel b a} {y : Sel c b}  →
            embToBCC (x ∙ y) ≈ embToBCC x ∘ embToBCC y
 emb-pres-∘ {x = x}      {end𝟙}   = sym idr
@@ -47,8 +52,11 @@ emb-pres-∘ {x = keep x} {keep y} = sym
           (trans assoc (congr (sym emb-pres-∘)))))
       π₂-pair))
 
--- Recall that wkBCC is the fmap of the BCC presheaf
--- wkBCC preserves identity in OPE as identity function
+------------------------------------------------------------------------
+-- `liftBCC` is a functor
+
+-- liftBCC preserves identity
+
 bcc-pres-id : ∀ {a b} {t : BCC a b} → liftBCC iden t ≈ t
 bcc-pres-id {𝕓}     = idr
 bcc-pres-id {𝟙}     = idr
@@ -61,14 +69,20 @@ bcc-pres-id {a * b} = trans
   idr
 bcc-pres-id {a + a₁} = idr
 
--- wkBCC preserves composition in OPE to function composition
+-- liftBCC preserves composition
+
 bcc-pres-∘ : ∀ {a b c d} {x : Sel b a} {y : Sel c b} {t : BCC a d} →
   liftBCC (x ∙ y) t ≈ liftBCC y (liftBCC x t)
 bcc-pres-∘ {x = x} {y = y} {t = t} = trans (congl emb-pres-∘) assoc
 
--- naturality law of quotations
+
+------------------------------------------------------------------------
+-- `q` and `qₓ` are natural transformations
+
 mutual
 
+  -- naturality law of quotation of neutral forms
+  
   nat-qₓ : ∀{a b c}  
       → (τ : Sel c a)
       → (n : Ne a b)
@@ -82,6 +96,7 @@ mutual
       (congl (trans comp-pair (cong-pair (nat-qₓ τ x) (nat-q τ n))))
 
   -- naturality law of quotation of normal forms
+  
   nat-q : ∀{a b c}  
       → (τ : Sel c a)
       → (n : Nf a b)
@@ -104,7 +119,11 @@ mutual
         (trans (congl (cong-pair refl idl)) (nat-q (keep τ) m))
         (trans (congl (cong-pair refl idl)) (nat-q (keep τ) n)))
 
--- also provable by uniq-iden
+------------------------------------------------------------------------
+-- Miscellaneous
+
+-- `keepIdenIsIden` should also be provable by `uniq-iden`
+
 keepIdenIsIden : ∀{a b c} {f : BCC (a * b) c} → f ≈ f ∘ liftBCC (keep iden) id
 keepIdenIsIden = sym
   (trans

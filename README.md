@@ -1,2 +1,2 @@
 # nbe-bcc
-Normalization by Evaluation for Bicartesian Closed Combinators 
+Exponential Elimination for Bicartesian Closed Categorical Combinators (using Normalization by Evaluation)

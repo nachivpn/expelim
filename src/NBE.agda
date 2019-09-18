@@ -18,11 +18,11 @@ open import Data.Sum using (inj₁ ; inj₂)
 mutual
 
   data Ne (a : Ty) : Ty → Set where
-    sel : ∀ {b}   → Sel a b      → Ne a b           -- id / π₁ / < , >        
+    sel : ∀ {b}   → Sel a b      → Ne a b           -- id / π₁ / < , >
     fst : ∀ {b c} → Ne a (b * c) → Ne a b           -- π₁ ∘ x
     snd : ∀ {b c} → Ne a (b * c) → Ne a c           -- π₂ ∘ x
     app : ∀ {b c} → Ne a (b ⇒ c) → Nf a b → Ne a c  -- eval ∘ < x , n >
-        
+
   data Nf (a : Ty) : Ty → Set where
     unit :             Nf a 𝟙
     ne-𝕓 :             Ne a 𝕓 → Nf a 𝕓
@@ -47,7 +47,7 @@ mutual
   liftNf e (pair n n₁)  = pair (liftNf e n) (liftNf e n₁)
   liftNf e (abs n)      = abs (liftNf (keep e) n)
   liftNf e (case x p q) = case (liftNe e x) (liftNf (keep e) p) (liftNf (keep e) q)
-  
+
   liftNe : ∀ {i j a} → Sel j i → Ne i a → Ne j a
   liftNe e (sel x)   = sel (x ∙ e)
   liftNe e (fst x)   = fst (liftNe e x)
@@ -63,17 +63,17 @@ module Tree where
 
   -- `Tree i A` to be read as a tree value (for some input i)
   -- which contains values of the type A in its leaves
-  
+
   data Tree (i : Ty) (A : 𝒫) : Set where
-  
+
     -- a "leaf" with a value
     leaf   : (x : A .In i) →  Tree i A
-    
+
     -- a fake ("dead") leaf constructed using the empty type
     dead   : Ne i 𝟘 → Tree i A
 
     -- a decision ("branch") over a value of sum which we don't have
-    branch : ∀{c d} → Ne i (c + d) → Tree (i * c) A →  Tree (i * d) A → Tree i A 
+    branch : ∀{c d} → Ne i (c + d) → Tree (i * c) A →  Tree (i * d) A → Tree i A
 
   liftTree : ∀ {A i j} → Sel j i → Tree i A  → Tree j A
   liftTree {A} e (leaf x)       = leaf (lift A e x)
@@ -82,14 +82,14 @@ module Tree where
     branch (liftNe e x)
       (liftTree (keep e) p)
       (liftTree (keep e) q)
-      
+
 open Tree
 
 ------------------------------------------------------------------------
 -- Presheaf instances (some used for interpreting types)
 
 liftBCC : ∀ {i j a} → Sel j i → BCC i a → BCC j a
-liftBCC e m = m ∘ embToBCC e
+liftBCC e m = m ∘ embSel e
 
 BCC' : (a : Ty) → 𝒫
 BCC' a .In i = BCC i a
@@ -102,7 +102,7 @@ Ne' a .lift = liftNe
 Nf' : (a : Ty) → 𝒫
 Nf' a .In i = Nf i a
 Nf' a .lift = liftNf
- 
+
 Tree' : (A : 𝒫) → 𝒫
 Tree' A .In i  = Tree i A
 Tree' A .lift    = liftTree
@@ -124,7 +124,7 @@ Tree' A .lift    = liftTree
 module TreeOps where
 
   -- Tree' is a monad on presheaves
-  
+
   return : ∀ {A} → A →̇ Tree' A
   return = leaf
 
@@ -141,7 +141,7 @@ module TreeOps where
   -- Trees containing normal forms (in leaves) can be converted to a normal form
   -- This is perhaps the most important operation on trees!
   -- (sometimes called "collect" / "pasteNf" etc.)
-  
+
   runTreeNf : ∀ {a} → Tree' (Nf' a) →̇ Nf' a
   runTreeNf (leaf x)       = x
   runTreeNf (dead x)       = ne-⊥ x
@@ -150,7 +150,7 @@ module TreeOps where
   mutual
 
     -- (Tree c ⟦_⟧) is an "applicative functor"
-    
+
     apTree : ∀ {a b c} → Tree c ⟦ a ⇒ b ⟧ → Tree c ⟦ a ⟧ → Tree c ⟦ b ⟧
     apTree {A} {B} (leaf x)       c = leaf (x iden (runTree {A} c))
     apTree {A} {B} (dead x)       c = dead x
@@ -160,7 +160,7 @@ module TreeOps where
         (apTree {A} {B} g (lift (Tree' ⟦ A ⟧) (drop iden) c))
 
     -- Semantic values from decision trees can be extracted
-    
+
     runTree : ∀ {a} → Tree' ⟦ a ⟧ →̇ ⟦ a ⟧
     runTree {𝟘}     c = join c
     runTree {𝟙}     _ = tt
@@ -211,7 +211,7 @@ eval {c} {a + b} [ p , q ] x =
 mutual
 
   -- Convert neutrals to semantic values
-  
+
   reflect : ∀ (a : Ty) → Ne' a →̇ ⟦ a ⟧
   reflect 𝟘 x       = dead x
   reflect 𝟙 x       = tt
@@ -223,7 +223,7 @@ mutual
     (leaf (inj₂ (reflect b (snd (sel iden)))))
 
   -- Reify semantic values into normal forms
-  
+
   reifyVal : ∀ {a : Ty} → ⟦ a ⟧ →̇ Nf' a
   reifyVal {𝟘} t           = runTreeNf (map (cast (Nf' 𝟘)) t)
   reifyVal {𝟙} t           = unit
@@ -257,22 +257,21 @@ norm t = reify (eval t)
 
 mutual
 
-  qₓ : ∀ {a} → Ne' a →̇ BCC' a
-  qₓ (sel x)   = liftBCC x id
-  qₓ (fst x)   = π₁ ∘ qₓ x
-  qₓ (snd x)   = π₂ ∘ qₓ x
-  qₓ (app x n) = apply ∘ < qₓ x , q n >
+  qNe : ∀ {a} → Ne' a →̇ BCC' a
+  qNe (sel x)   = liftBCC x id
+  qNe (fst x)   = π₁ ∘ qNe x
+  qNe (snd x)   = π₂ ∘ qNe x
+  qNe (app x n) = apply ∘ < qNe x , q n >
 
   q : ∀ {a} → Nf' a →̇ BCC' a
   q unit          = unit
-  q (ne-𝕓 x)      = qₓ x
-  q (ne-⊥ x)      = init ∘ qₓ x
+  q (ne-𝕓 x)      = qNe x
+  q (ne-⊥ x)      = init ∘ qNe x
   q (injl n)      = injl ∘ q n
   q (injr n)      = injr ∘ q n
   q (pair n n₁)   = < q n , q n₁ >
   q (abs n)       = curry (q n)
-  q (case x n n₁) = caseM (qₓ x) (q n) (q n₁)
+  q (case x n n₁) = caseM (qNe x) (q n) (q n₁)
 
 norm′ :  ∀ {a : Ty} → BCC' a →̇ BCC' a
 norm′ t = q (norm t)
-

@@ -18,7 +18,7 @@ open import Data.Sum
   using (_⊎_ ; inj₁ ; inj₂)
 open import Data.Product
   using (_×_ ; _,_ ; proj₁ ; proj₂ ; Σ ; ∃ ; ∃₂)
-  
+
 open 𝒫
 open NBE.Tree
 open NBE.TreeOps
@@ -38,21 +38,21 @@ Sem x y = In y x
 
 Rt : {a b : Ty} {B : 𝒫}
 
-  -- (Index) Relation for the values on the leaves of trees 
+  -- (Index) Relation for the values on the leaves of trees
   → (Rl : ∀ {i} → BCC i b → Sem i B → Set)
 
   -- The relation
   → BCC a b
   → Tree a B
   → Set
-  
+
 Rt Rl t (leaf a)         = Rl t a
-Rt Rl t (dead x)         = t ≈ init ∘ qₓ x
+Rt Rl t (dead x)         = t ≈ init ∘ qNe x
 Rt Rl t (branch x c₁ c₂) =
   ∃₂ λ t₁ t₂
     → (Rt Rl t₁ c₁)
     × (Rt Rl t₂ c₂)
-    × (t ≈ caseM (qₓ x) t₁ t₂)
+    × (t ≈ caseM (qNe x) t₁ t₂)
 
 -- Logical relations for the empty type
 
@@ -65,7 +65,7 @@ R₀ t c = Rt Rl₀ t c
 mutual
 
   -- Logical relation between terms and semantic values (of the same type)
-  
+
   R : ∀ {a b} → BCC a b → Sem a ⟦ b ⟧ → Set
   R {a} {b = 𝕓} t v =
     t ≈ q v
@@ -81,13 +81,13 @@ mutual
    R₊ t v
 
   -- Logical relations for sums
-  
+
   Rl₊ : ∀ {a b c} → BCC a (b + c) → Sem a ⟦ b ⟧ ⊎ Sem a ⟦ c ⟧ → Set
   Rl₊ t (inj₁ x) = ∃ (λ t' → R t' x × (injl ∘ t' ≈ t))
   Rl₊ t (inj₂ y) = ∃ (λ t' → R t' y × (injr ∘ t' ≈ t))
-   
+
   R₊ : ∀ {a b c} → BCC a (b + c) → Tree a (⟦ b ⟧ +' ⟦ c ⟧) → Set
-  R₊ t c = Rt Rl₊ t c   
+  R₊ t c = Rt Rl₊ t c
 
 -- Special cases of Rt to ease reasoning
 
@@ -120,7 +120,7 @@ inv+ (dead _)        p q            =
   trans p q
 inv+ (branch _ _ _)  p (t₁ , t₂ , t₁q , t₂q , r) =
   t₁ , t₂ , t₁q , t₂q , trans p r
- 
+
 inv : ∀{b a} {t t' : BCC a b} {v : Sem a ⟦ b ⟧}
   → t  ≈ t'
   → R t' v
@@ -138,11 +138,11 @@ inv {b = _ + _} {v = v} p q =
 ------------------------------------------------------------------------
 -- Preservation of relations by lifting
 
-liftConv : ∀ {a b c} {t t' : BCC a b} 
+liftConv : ∀ {a b c} {t t' : BCC a b}
   → (τ : Sel c a)
   → t ≈ t'
   → liftBCC τ t ≈ liftBCC τ t'
-liftConv τ p = congr p  
+liftConv τ p = congr p
 
 liftPresRt : ∀{b a c B}
   → (v : Tree a B)
@@ -156,7 +156,7 @@ liftPresRt (leaf a) τ p m = m τ p
 liftPresRt (dead x) τ p  m =
   trans
     (congr p)
-    (trans (sym assoc) (congl (nat-qₓ _ _)))
+    (trans (sym assoc) (congl (nat-qNe _ _)))
 liftPresRt (branch x v₁ v₂) τ (t₁ , t₂ , p₁ , p₂ , r) m =
   liftBCC (keep τ) t₁ ,
   liftBCC (keep τ) t₂ ,
@@ -165,7 +165,7 @@ liftPresRt (branch x v₁ v₂) τ (t₁ , t₂ , p₁ , p₂ , r) m =
   trans (congr r) ((trans
       post-comp-caseM
       (cong-caseM
-        (nat-qₓ _ _)
+        (nat-qNe _ _)
         (congl (cong-pair refl idl))
         (congl (cong-pair refl idl)))))
 
@@ -180,7 +180,7 @@ liftPresR {𝟘} τ {v = v}      p  = liftPresRt v τ p λ {_} {_} {y} _ x → �
 liftPresR {b ⇒ b₁} τ {t} {v} p  = λ τ₁ x →
   inv {b₁}
     (congl (cong-pair (sym bcc-pres-∘) refl))
-    (p (τ ∙ τ₁) x) 
+    (p (τ ∙ τ₁) x)
 liftPresR {b * b₁} τ (p₁ , p₂) =
   inv {b} assoc (liftPresR {b} τ p₁) ,
   inv {b₁} assoc (liftPresR {b₁} τ p₂)
@@ -190,7 +190,7 @@ liftPresR {b₁ + b₂} τ  {v = v}        p = liftPresRt v τ p (helper _)
       → (y : Sem c ⟦ b₁ ⟧ ⊎ Sem c ⟦ b₂ ⟧)
       → (τ : Sel e c)
       → Rl₊ t y
-      → Rl₊ (t ∘ embToBCC τ) (lift (⟦ b₁ ⟧ +' ⟦ b₂ ⟧) τ y)
+      → Rl₊ (t ∘ embSel τ) (lift (⟦ b₁ ⟧ +' ⟦ b₂ ⟧) τ y)
   helper (inj₁ x) τ (t₁ , p , q) = _ , (liftPresR {b₁} τ p) , trans assoc (liftConv τ q)
   helper (inj₂ y) τ (t₁ , p , q) = _ , (liftPresR {b₂} τ p) , trans assoc (liftConv τ q)
 
@@ -229,7 +229,7 @@ corrProj₁ {a} t (branch x v₁ v₂) (t₁ , t₂ , p , q , r) =
   (π₁ ∘ t₁) , (π₁ ∘ t₂) ,
   corrProj₁ t₁ v₁ p , corrProj₁ t₂ v₂ q ,
   trans (congl r) comp-caseM
-  
+
 corrProj₂ : ∀ {a b₁ b₂}
   (t : BCC a (b₁ * b₂))
   (v : Tree a (⟦ b₁ ⟧ ×' ⟦ b₂ ⟧))
@@ -242,7 +242,7 @@ corrProj₂ t (dead x) p = trans
 corrProj₂ {a} t (branch x v₁ v₂) (t₁ , t₂ , p , q , r) =
   (π₂ ∘ t₁) , (π₂ ∘ t₂) ,
   corrProj₂ t₁ v₁ p , corrProj₂ t₂ v₂ q ,
-  trans (congl r) comp-caseM  
+  trans (congl r) comp-caseM
 
 corrRunTreeNf : ∀{a b}
   → (t : BCC a b) (v : Tree a (Nf' b))
@@ -306,7 +306,7 @@ mutual
             (sym (trans
               assoc
               (congr (trans (congl embdId) idr)))))))))
-              
+
   corrRunTree : ∀{b a}
     → (t : BCC a b) (v : Tree a ⟦ b ⟧)
     → Rt' t v
@@ -426,7 +426,7 @@ mutual
     → R t v → t ≈ (q (reifyVal v))
   corrReifyVal {𝕓}         p = p
   corrReifyVal {𝟙}         p = sym uniq-unit
-  corrReifyVal {𝟘} {v = v} p = corrReify₀ v p    
+  corrReifyVal {𝟘} {v = v} p = corrReify₀ v p
   corrReifyVal {b ⇒ b₁}    p  = trans
     η⇒
     (cong-curry
@@ -438,7 +438,7 @@ mutual
   corrReifyVal {b * b₁}    p = trans
     η* -- eta expand product, returns a pair
     (cong-pair (corrReifyVal (proj₁ p)) ((corrReifyVal (proj₂ p))))
-  corrReifyVal {b + b₁} {v = v} p = corrReifyOr v p 
+  corrReifyVal {b + b₁} {v = v} p = corrReifyOr v p
 
   corrReifyOr : ∀{a b₁ b₂} {t : BCC a (b₁ + b₂)} (v : Sem a (Tree' (⟦ b₁ ⟧ +' ⟦ b₂ ⟧)))
       → R₊ t v
@@ -448,14 +448,14 @@ mutual
   corrReifyOr (dead x)        p           = p
   corrReifyOr (branch x v₁ v₂) (t₁ , t₂ , p , q , r) =
     trans r (cong-caseM refl (corrReifyOr v₁ p) (corrReifyOr v₂ q))
-  
-  corrReflect : ∀ {b a} → {n : Ne a b} → R (qₓ n) (reflect b n)
+
+  corrReflect : ∀ {b a} → {n : Ne a b} → R (qNe n) (reflect b n)
   corrReflect {𝕓}       = refl
   corrReflect {𝟙}       = tt
   corrReflect {𝟘}       = trans (sym idl) (congr (sym uniq-init))
   corrReflect {b₁ ⇒ b₂} = λ τ x  →
     inv {b₂}
-      (congl (cong-pair (nat-qₓ _ _) (corrReifyVal x)))
+      (congl (cong-pair (nat-qNe _ _) (corrReifyVal x)))
       (corrReflect {b₂})
   corrReflect {b₁ * b₂} = corrReflect {b₁} , corrReflect {b₂}
   corrReflect {b₁ + b₂} =

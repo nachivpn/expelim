@@ -2,7 +2,7 @@ module Sel where
 
 open import Type
 open import Util
-open import BCC 
+open import BCC
 
 --  Selections are the combinator-equivalent of variables
 -- `Sel i j` to be read as a selection of j from i (or j ⊑ i)
@@ -12,7 +12,7 @@ data Sel : Ty → Ty → Set where
   end𝕓  : Sel 𝕓 𝕓
   end𝟘  : Sel 𝟘 𝟘
   end⇒  : ∀ {a b}   → Sel (a ⇒ b) (a ⇒ b)
-  end+  : ∀ {a b}   → Sel (a + b) (a + b)   
+  end+  : ∀ {a b}   → Sel (a + b) (a + b)
   drop  : ∀ {a b c} → Sel a b → Sel (a * c) b
   keep  : ∀ {a b c} → Sel a b → Sel (a * c) (b * c)
 
@@ -37,14 +37,14 @@ drop f ∙ keep g = drop (f ∙ g)
 keep f ∙ keep g = keep (f ∙ g)
 
 -- selections can be embedded into terms
-embToBCC : ∀ {a b} → Sel a b → BCC a b
-embToBCC end𝟙     = id
-embToBCC end𝕓     = id
-embToBCC end𝟘     = id
-embToBCC end⇒     = id
-embToBCC end+     = id
-embToBCC (drop e) = embToBCC e ∘ π₁
-embToBCC (keep e) = < embToBCC e ∘ π₁ , π₂ >
+embSel : ∀ {a b} → Sel a b → BCC a b
+embSel end𝟙     = id
+embSel end𝕓     = id
+embSel end𝟘     = id
+embSel end⇒     = id
+embSel end+     = id
+embSel (drop e) = embSel e ∘ π₁
+embSel (keep e) = < embSel e ∘ π₁ , π₂ >
 
 open import Relation.Binary.PropositionalEquality using (_≡_ ; refl ; cong)
 
@@ -70,7 +70,7 @@ private
   ⊑-idr {s = drop s} = cong drop ⊑-idr
   ⊑-idr {s = keep s} = cong keep ⊑-idr
 
-  ⊑-assoc :  ∀ {a b c d} {x : Sel c d} {y : Sel b c} {z : Sel a b} 
+  ⊑-assoc :  ∀ {a b c d} {x : Sel c d} {y : Sel b c} {z : Sel a b}
     → (x ∙ y) ∙ z ≡ x ∙ (y ∙ z)
   ⊑-assoc {x = x}      {y}      {end𝟙}  = refl
   ⊑-assoc {x = x}      {y}      {end𝕓}  = refl

@@ -11,11 +11,11 @@ open import Type
 
 
 ------------------------------------------------------------------------
--- `embToBCC` is a functor
+-- `embSel` is a functor
 
--- embToBCC preserves identity
+-- embSel preserves identity
 
-embdId : ∀ {a} → embToBCC (iden {a}) ≈ id {a} 
+embdId : ∀ {a} → embSel (iden {a}) ≈ id {a}
 embdId {𝕓}     = refl
 embdId {𝟙}     = refl
 embdId {𝟘}     = refl
@@ -25,10 +25,10 @@ embdId {a * b} = trans
   (uniq-pair idr idr)
 embdId {a + b} = refl
 
--- embToBCC preserves composition
+-- embSel preserves composition
 
 emb-pres-∘ : ∀ {a b c} {x : Sel b a} {y : Sel c b}  →
-           embToBCC (x ∙ y) ≈ embToBCC x ∘ embToBCC y
+           embSel (x ∙ y) ≈ embSel x ∘ embSel y
 emb-pres-∘ {x = x}      {end𝟙}   = sym idr
 emb-pres-∘ {x = x}      {end𝕓}   = sym idr
 emb-pres-∘ {x = x}      {end𝟘}   = sym idr
@@ -82,28 +82,28 @@ bcc-pres-∘ {x = x} {y = y} {t = t} = trans (congl emb-pres-∘) assoc
 mutual
 
   -- naturality law of quotation of neutral forms
-  
-  nat-qₓ : ∀{a b c}  
+
+  nat-qNe : ∀{a b c}
       → (τ : Sel c a)
       → (n : Ne a b)
-      → liftBCC τ (qₓ n) ≈ qₓ (liftNe τ n)
-  nat-qₓ τ (sel x) = sym bcc-pres-∘
-  nat-qₓ τ (fst x) = trans (sym assoc) (congl (nat-qₓ τ x))
-  nat-qₓ τ (snd x) = trans (sym assoc) (congl (nat-qₓ τ x))
-  nat-qₓ τ (app x n) =
+      → liftBCC τ (qNe n) ≈ qNe (liftNe τ n)
+  nat-qNe τ (sel x) = sym bcc-pres-∘
+  nat-qNe τ (fst x) = trans (sym assoc) (congl (nat-qNe τ x))
+  nat-qNe τ (snd x) = trans (sym assoc) (congl (nat-qNe τ x))
+  nat-qNe τ (app x n) =
     trans
       (sym assoc)
-      (congl (trans comp-pair (cong-pair (nat-qₓ τ x) (nat-q τ n))))
+      (congl (trans comp-pair (cong-pair (nat-qNe τ x) (nat-q τ n))))
 
   -- naturality law of quotation of normal forms
-  
-  nat-q : ∀{a b c}  
+
+  nat-q : ∀{a b c}
       → (τ : Sel c a)
       → (n : Nf a b)
       → liftBCC τ (q n) ≈ q (liftNf τ n)
   nat-q τ unit          = sym uniq-unit
-  nat-q τ (ne-𝕓 x)      = nat-qₓ τ x
-  nat-q τ (ne-⊥ x)      = trans (sym assoc) (congl (nat-qₓ τ x))
+  nat-q τ (ne-𝕓 x)      = nat-qNe τ x
+  nat-q τ (ne-⊥ x)      = trans (sym assoc) (congl (nat-qNe τ x))
   nat-q τ (injl v)      = trans (sym assoc) (congl (nat-q τ v))
   nat-q τ (injr v)      = trans (sym assoc) (congl (nat-q τ v))
   nat-q τ (pair v v₁)   = trans comp-pair (cong-pair (nat-q τ v) (nat-q τ v₁))
@@ -115,7 +115,7 @@ mutual
     trans
       post-comp-caseM
       (cong-caseM
-        (nat-qₓ τ x)
+        (nat-qNe τ x)
         (trans (congl (cong-pair refl idl)) (nat-q (keep τ) m))
         (trans (congl (cong-pair refl idl)) (nat-q (keep τ) n)))
 

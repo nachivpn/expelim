@@ -118,7 +118,8 @@ q≋qD pa pb (case s m n) = cong-∘
 
 -- Exponential Elimination theorem (statement):
 -- For every BCC term between first order types,
--- there exists an equivalent DBC term.
+-- there exists an equivalent DBC term---which
+-- does not contain exponentials by construction.
 
 ExpElimThm : Set
 ExpElimThm = {a b : Ty}

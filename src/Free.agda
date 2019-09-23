@@ -72,8 +72,8 @@ FOFreeBiCC = SubCategory _ (FOSubFreeBiCCC)
 -- The Free Distributive BiCartesian Category, generated over set 𝕓
 FreeDistrBCC : Category0
 FreeDistrBCC = record
-              { Obj = Ty
-              ; _⇒_ = DBC
+              { Obj = Σ Ty firstOrd
+              ; _⇒_ = λ { (a , _) (b , _) → DBC a b }
               ; _≈_ = λ f g → embD f ≈ embD g
               ; id  = id
               ; _∘_ = _∘_
@@ -92,8 +92,8 @@ FreeDistrBCC = record
 Eliminator : Functor FOFreeBiCC FreeDistrBCC
 Eliminator = record
 
-      { -- object map: discard firstOrd proofs
-        F₀           = proj₁
+      { -- object map: identity
+        F₀           = λ x → x
 
         -- morphism map: map morphisms to the quotation (qD) of their normal forms
       ; F₁           = λ { {_ , fa} {_ , fb} (f , _) → qD fa fb (norm f) }
@@ -116,3 +116,15 @@ Eliminator = record
             (g' , expElim_g) = (expElim _ _ g)  -- g ≋ g'
           in trans (sym expElim_f) (trans p expElim_g) }
       }
+
+-- "Embedder" functor which embeds the Free Distributive BiCartesian Category
+-- into the First-Order Free BiCCC
+Embedder : Functor FreeDistrBCC FOFreeBiCC
+Embedder = record
+             { F₀ = λ x → x
+             ; F₁ = λ x → embD x , _
+             ; identity = refl
+             ; homomorphism = refl
+             ; F-resp-≈ = λ p → p
+             }
+-- Q: Is "Embedder" a forgetful functor?

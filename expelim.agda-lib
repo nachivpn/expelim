@@ -1,5 +1,6 @@
 name: nbe-bcc
 depend:
   standard-library
+  agda-categories
 include :
   src

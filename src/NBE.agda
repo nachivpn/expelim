@@ -54,6 +54,9 @@ mutual
   liftNe e (snd x)   = snd (liftNe e x)
   liftNe e (app n x) = app (liftNe e n) (liftNf e x)
 
+liftBCC : ∀ {i j a} → Sel j i → BCC i a → BCC j a
+liftBCC e m = m ∘ embSel e
+
 open 𝒫
 
 ------------------------------------------------------------------------
@@ -87,13 +90,6 @@ open Tree
 
 ------------------------------------------------------------------------
 -- Presheaf instances (some used for interpreting types)
-
-liftBCC : ∀ {i j a} → Sel j i → BCC i a → BCC j a
-liftBCC e m = m ∘ embSel e
-
-BCC' : (a : Ty) → 𝒫
-BCC' a .In i = BCC i a
-BCC' a .lift = liftBCC
 
 Ne' : (a : Ty) → 𝒫
 Ne' a .In i = Ne i a
@@ -239,31 +235,31 @@ mutual
 
 -- Identity reflection
 
-reflectᵢ : ∀ (a : Ty) → ⟦ a ⟧ .In a
+reflectᵢ : (a : Ty) → ⟦ a ⟧ .In a
 reflectᵢ a = reflect a (sel iden)
 
 -- Reification
 
-reify : ∀ {a b : Ty} → (⟦ a ⟧ →̇ ⟦ b ⟧) → Nf a b
+reify : {a b : Ty} → (⟦ a ⟧ →̇ ⟦ b ⟧) → Nf a b
 reify {a} f = reifyVal (f (reflectᵢ a))
 
 ------------------------------------------------------------------------
 -- Normalization
 
-norm : ∀ {a : Ty} → BCC' a →̇ Nf' a
+norm : {a b : Ty} → BCC a b → Nf a b
 norm t = reify (eval t)
 
 -- Embedding (or "quotation") of normal forms into terms
 
 mutual
 
-  qNe : ∀ {a} → Ne' a →̇ BCC' a
+  qNe : ∀ {a b} → Ne a b → BCC a b
   qNe (sel x)   = liftBCC x id
   qNe (fst x)   = π₁ ∘ qNe x
   qNe (snd x)   = π₂ ∘ qNe x
   qNe (app x n) = apply ∘ < qNe x , q n >
 
-  q : ∀ {a} → Nf' a →̇ BCC' a
+  q : ∀ {a b} → Nf a b → BCC a b
   q unit          = unit
   q (ne-𝕓 x)      = qNe x
   q (ne-⊥ x)      = init ∘ qNe x
@@ -273,5 +269,5 @@ mutual
   q (abs n)       = curry (q n)
   q (case x n n₁) = caseM (qNe x) (q n) (q n₁)
 
-norm′ :  ∀ {a : Ty} → BCC' a →̇ BCC' a
+norm′ : {a b : Ty} → BCC a b → BCC a b
 norm′ t = q (norm t)

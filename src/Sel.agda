@@ -50,37 +50,35 @@ open import Relation.Binary.PropositionalEquality using (_≡_ ; refl ; cong)
 
 -- Category of Selections
 
-private
+sel-idl : ∀ {a b} {s : Sel a b} → iden ∙ s ≡ s
+sel-idl {s = end𝟙}   = refl
+sel-idl {s = end𝕓}   = refl
+sel-idl {s = end𝟘}   = refl
+sel-idl {s = end⇒}   = refl
+sel-idl {s = end+}   = refl
+sel-idl {s = drop s} = cong drop sel-idl
+sel-idl {s = keep s} = cong keep sel-idl
 
-  ⊑-idl : ∀ {a b} {s : Sel a b} → iden ∙ s ≡ s
-  ⊑-idl {s = end𝟙}   = refl
-  ⊑-idl {s = end𝕓}   = refl
-  ⊑-idl {s = end𝟘}   = refl
-  ⊑-idl {s = end⇒}   = refl
-  ⊑-idl {s = end+}   = refl
-  ⊑-idl {s = drop s} = cong drop ⊑-idl
-  ⊑-idl {s = keep s} = cong keep ⊑-idl
+sel-idr : ∀ {a b} {s : Sel a b} → s ∙ iden ≡ s
+sel-idr {s = end𝟙}   = refl
+sel-idr {s = end𝕓}   = refl
+sel-idr {s = end𝟘}   = refl
+sel-idr {s = end⇒}   = refl
+sel-idr {s = end+}   = refl
+sel-idr {s = drop s} = cong drop sel-idr
+sel-idr {s = keep s} = cong keep sel-idr
 
-  ⊑-idr : ∀ {a b} {s : Sel a b} → s ∙ iden ≡ s
-  ⊑-idr {s = end𝟙}   = refl
-  ⊑-idr {s = end𝕓}   = refl
-  ⊑-idr {s = end𝟘}   = refl
-  ⊑-idr {s = end⇒}   = refl
-  ⊑-idr {s = end+}   = refl
-  ⊑-idr {s = drop s} = cong drop ⊑-idr
-  ⊑-idr {s = keep s} = cong keep ⊑-idr
-
-  ⊑-assoc :  ∀ {a b c d} {x : Sel c d} {y : Sel b c} {z : Sel a b}
-    → (x ∙ y) ∙ z ≡ x ∙ (y ∙ z)
-  ⊑-assoc {x = x}      {y}      {end𝟙}  = refl
-  ⊑-assoc {x = x}      {y}      {end𝕓}  = refl
-  ⊑-assoc {x = x}      {y}      {end𝟘}  = refl
-  ⊑-assoc {x = x}      {y}      {end⇒}  = refl
-  ⊑-assoc {x = x}      {y}      {end+}  = refl
-  ⊑-assoc {x = x}      {y}      {drop z} = cong drop (⊑-assoc {z = z})
-  ⊑-assoc {x = x}      {drop y} {keep z} = cong drop (⊑-assoc {z = z})
-  ⊑-assoc {x = drop x} {keep y} {keep z} = cong drop (⊑-assoc {z = z})
-  ⊑-assoc {x = keep x} {keep y} {keep z} = cong keep (⊑-assoc {z = z})
+sel-assoc :  ∀ {a b c d} {x : Sel c d} {y : Sel b c} {z : Sel a b}
+  → (x ∙ y) ∙ z ≡ x ∙ (y ∙ z)
+sel-assoc {x = x}      {y}      {end𝟙}  = refl
+sel-assoc {x = x}      {y}      {end𝕓}  = refl
+sel-assoc {x = x}      {y}      {end𝟘}  = refl
+sel-assoc {x = x}      {y}      {end⇒}  = refl
+sel-assoc {x = x}      {y}      {end+}  = refl
+sel-assoc {x = x}      {y}      {drop z} = cong drop (sel-assoc {z = z})
+sel-assoc {x = x}      {drop y} {keep z} = cong drop (sel-assoc {z = z})
+sel-assoc {x = drop x} {keep y} {keep z} = cong drop (sel-assoc {z = z})
+sel-assoc {x = keep x} {keep y} {keep z} = cong keep (sel-assoc {z = z})
 
 -- identity is unique
 

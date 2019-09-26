@@ -132,3 +132,11 @@ main pa pb t = let n = (norm t) ; t' = (qD pa pb n)
   in t' , trans (correctNorm t) (q≋qD pa pb n)
 
 -- ∎
+
+-- utlity over main
+
+expElim-pres-≈ : {a b : Ty}
+  → {fa : firstOrd a} → {fb : firstOrd b}
+  → (t : BCC a b)
+  → t ≋ qD fa fb (norm t)
+expElim-pres-≈ t = proj₂ (main _ _ t)

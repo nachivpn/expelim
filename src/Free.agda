@@ -44,7 +44,8 @@ open DBC.DBC
 
 Category0 = Category 0ℓ 0ℓ 0ℓ
 
--- The Free BiCartesian Closed Category (Free BiCCC), generated over set 𝕓
+-- The Free BiCartesian Closed Category (Free BiCCC),
+-- generated using the singleton graph containing a node 𝕓 (base type)
 FreeBiCCC : Category0
 FreeBiCCC = record
               { Obj = Ty
@@ -62,7 +63,7 @@ FreeBiCCC = record
               ; ∘-resp-≈  = cong-∘
               }
 
--- First-Order subcategory of the Free BiCCC
+-- First-Order (full) subcategory of the Free BiCCC
 FOSubFreeBiCCC : SubCat FreeBiCCC (Σ Ty firstOrd)
 FOSubFreeBiCCC = record {
   U    = proj₁ ;
@@ -74,7 +75,8 @@ FOSubFreeBiCCC = record {
 FOFreeBiCCC : Category0
 FOFreeBiCCC = SubCategory _ (FOSubFreeBiCCC)
 
--- The Free Distributive BiCartesian Category, generated over set 𝕓
+-- The Free Distributive BiCartesian Category,
+-- generated using the singleton graph containing a node 𝕓
 FreeDistrBCC : Category0
 FreeDistrBCC = record
               { Obj = Σ Ty firstOrd

@@ -8,6 +8,8 @@ open import Type
 open import Util
 open import BCC
 open import Sel
+  using (Sel ; _∙_ ; embSel ; iden)
+open Sel.Sel using (drop ; keep)
 open import Presheaf
 open import Data.Unit using (tt)
 open import Data.Sum using (inj₁ ; inj₂)
@@ -254,7 +256,7 @@ norm t = reify (eval t)
 mutual
 
   qNe : ∀ {a b} → Ne a b → BCC a b
-  qNe (sel x)   = liftBCC x id
+  qNe (sel x)   = embSel x
   qNe (fst x)   = π₁ ∘ qNe x
   qNe (snd x)   = π₂ ∘ qNe x
   qNe (app x n) = apply ∘ < qNe x , q n >

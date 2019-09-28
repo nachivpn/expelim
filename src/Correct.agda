@@ -156,7 +156,7 @@ liftPresRt (leaf a) τ p m = m τ p
 liftPresRt (dead x) τ p  m =
   trans
     (congr p)
-    (trans (sym assoc) (congl (nat-qNe _ _)))
+    (trans (sym assoc) (congl (nat-qNe τ x)))
 liftPresRt (branch x v₁ v₂) τ (t₁ , t₂ , p₁ , p₂ , r) m =
   liftBCC (keep τ) t₁ ,
   liftBCC (keep τ) t₂ ,
@@ -165,7 +165,7 @@ liftPresRt (branch x v₁ v₂) τ (t₁ , t₂ , p₁ , p₂ , r) m =
   trans (congr r) ((trans
       post-comp-caseM
       (cong-caseM
-        (nat-qNe _ _)
+        (nat-qNe τ x)
         (congl (cong-pair refl idl))
         (congl (cong-pair refl idl)))))
 
@@ -432,8 +432,9 @@ mutual
     (cong-curry
       (corrReifyVal {b₁}
         (inv {b₁}
-          (congl (cong-pair (congl (trans (sym idl) (congr (sym embdId))))
-          (trans idl keepIdenIsIden)))
+          (congl (cong-pair
+            (congl (trans (sym idl) (congr (sym embdId))))
+            (trans idl (sym π₂-pair))))
           (p (drop iden) (corrReflect {b})))))
   corrReifyVal {b * b₁}    p = trans
     η* -- eta expand product, returns a pair
@@ -453,21 +454,21 @@ mutual
   corrReflect {𝕓}       = refl
   corrReflect {𝟙}       = tt
   corrReflect {𝟘}       = trans (sym idl) (congr (sym uniq-init))
-  corrReflect {b₁ ⇒ b₂} = λ τ x  →
+  corrReflect {b₁ ⇒ b₂} {n = n} = λ τ x  →
     inv {b₂}
-      (congl (cong-pair (nat-qNe _ _) (corrReifyVal x)))
+      ((congl (cong-pair (nat-qNe τ n) (corrReifyVal x))))
       (corrReflect {b₂})
   corrReflect {b₁ * b₂} = corrReflect {b₁} , corrReflect {b₂}
   corrReflect {b₁ + b₂} =
     (injl ∘ π₂) ,
     (injr ∘ π₂) ,
-    (π₂ , inv {b₁} keepIdenIsIden (corrReflect {b₁}) , refl) ,
-    (π₂ , inv {b₂} keepIdenIsIden (corrReflect {b₂}) , refl) ,
+    (π₂ , inv {b₁} (sym π₂-pair) (corrReflect {b₁}) , refl) ,
+    (π₂ , inv {b₂} (sym π₂-pair) (corrReflect {b₂}) , refl) ,
     η+   -- eta expand sum type , returns a caseM
 
 corrReflectᵢ : ∀ a → R (id {a}) (reflectᵢ a)
 corrReflectᵢ a = inv {a}
-  (sym bcc-pres-id)
+  (sym embdId)
   (corrReflect {a} {n = sel iden})
 
 corrReify : ∀ {a b}

@@ -75,7 +75,6 @@ bcc-pres-∘ : ∀ {a b c d} {x : Sel b a} {y : Sel c b} {t : BCC a d} →
   liftBCC (x ∙ y) t ≈ liftBCC y (liftBCC x t)
 bcc-pres-∘ {x = x} {y = y} {t = t} = trans (congl emb-pres-∘) assoc
 
-
 ------------------------------------------------------------------------
 -- `q` and `qₓ` are natural transformations
 
@@ -87,7 +86,7 @@ mutual
       → (τ : Sel c a)
       → (n : Ne a b)
       → liftBCC τ (qNe n) ≈ qNe (liftNe τ n)
-  nat-qNe τ (sel x) = sym bcc-pres-∘
+  nat-qNe τ (sel x) = sym emb-pres-∘
   nat-qNe τ (fst x) = trans (sym assoc) (congl (nat-qNe τ x))
   nat-qNe τ (snd x) = trans (sym assoc) (congl (nat-qNe τ x))
   nat-qNe τ (app x n) =
@@ -118,15 +117,3 @@ mutual
         (nat-qNe τ x)
         (trans (congl (cong-pair refl idl)) (nat-q (keep τ) m))
         (trans (congl (cong-pair refl idl)) (nat-q (keep τ) n)))
-
-------------------------------------------------------------------------
--- Miscellaneous
-
--- `keepIdenIsIden` should also be provable by `uniq-iden`
-
-keepIdenIsIden : ∀{a b c} {f : BCC (a * b) c} → f ≈ f ∘ liftBCC (keep iden) id
-keepIdenIsIden = sym
-  (trans
-    assoc
-    (trans (cong-∘ idr (trans (cong-pair (trans (congr embdId) idl) refl)
-      (trans (cong-pair (sym idr) (sym idr)) (sym η*)))) idr))

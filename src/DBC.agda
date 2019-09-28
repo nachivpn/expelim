@@ -5,7 +5,6 @@ module DBC where
 
 open import Sel
 open import NBE
-open import BCC
 open import Type
 open import Util
 open import Data.Unit using (tt)
@@ -34,6 +33,7 @@ data DBC : (a b : Ty) → Set where
 
   -- distributivity (needed for qD)
   distr : ∀ {a b c} →  DBC (a * (b + c)) ((a * b) + (a * c))
+
 
 -- selections preserve first-orderness
 selSafe : ∀ {a b} → firstOrd a → Sel a b → firstOrd b
@@ -87,4 +87,3 @@ mutual
   qNeD p (app n x) with neutralSafe p n
   ...                 | ()
   qNeD p (sel x)   = embSelD x
-

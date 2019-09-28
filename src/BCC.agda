@@ -9,6 +9,9 @@ module BCC where
 
 open import Type
 open import Util
+open import Relation.Binary.PropositionalEquality
+  using (_≡_)
+  renaming (refl to ≡-refl)
 
 infixr 4 _∘_
 infixr 3 <_,_>
@@ -87,7 +90,7 @@ infix 2 _≈_
 data _≈_ : ∀ {a b} → (f g : BCC a b) → Set where
 
   -- categorical laws
-  
+
   idr  : ∀ {a b} {f : BCC a b}
     → (f ∘ id) ≈ f
   idl  : ∀ {a b} {f : BCC a b}
@@ -109,7 +112,7 @@ data _≈_ : ∀ {a b} → (f g : BCC a b) → Set where
     → (apply ∘ (curry f ⊗ id)) ≈ f
 
   -- uniqueness laws
-  
+
   uniq-init : ∀ {a} {f : BCC 𝟘 a}
     → init ≈ f
   uniq-unit : ∀ {a} {f : BCC a 𝟙}
@@ -125,9 +128,9 @@ data _≈_ : ∀ {a b} → (f g : BCC a b) → Set where
     → (h ∘ injl) ≈ f
     → (h ∘ injr) ≈ g
     → [ f , g ] ≈ h
-    
+
   -- _≈_ is an equivalence relation
-  
+
   refl  : ∀ {a b} {f : BCC a b}
     → f ≈ f
   sym   : ∀ {a b} {f g : BCC a b}
@@ -136,7 +139,7 @@ data _≈_ : ∀ {a b} → (f g : BCC a b) → Set where
     → f ≈ g → g ≈ h → f ≈ h
 
   -- congruence laws
-  
+
   congl : ∀ {a b c} {x y : BCC a b} {f : BCC b c}
     → x ≈ y → f ∘ x ≈ f ∘ y
   congr : ∀ {a b c} {x y : BCC b c} {f : BCC a b}
@@ -146,7 +149,7 @@ data _≈_ : ∀ {a b} → (f g : BCC a b) → Set where
 ------------------------------------------------------------------------
 -- Distributivity law
 
-{- 
+{-
   Distributivity laws can be derived in _≈_, but the reasoning
   is quite standard and boring---so we add it as a postulate here.
 -}
@@ -155,17 +158,21 @@ postulate
 
   -- Distribute forth and back
   distrfnb : ∀{a b c} → distrb ∘ distrf ≈ id {a * (b + c)}
-  
-  -- reverse (distrbnf) also holds, but not needed here
+
+  -- Distribute back and forth
+  distrbnf : ∀{a b c} → distrf ∘ distrb ≈ id {(a * b) + (a * c)}
 
 
 ------------------------------------------------------------------------
--- Boilerplate to use the setoid library for eq. reasoning
+-- Boilerplate for eq. reasoning
+
+≡→≈ : {a b : Ty} {f g : BCC a b} → f ≡ g → f ≈ g
+≡→≈ ≡-refl = refl
 
 module SetoidUtil where
 
   open import Relation.Binary
-    using (Setoid ; IsEquivalence) 
+    using (Setoid ; IsEquivalence)
 
   open Setoid
     renaming (_≈_ to _≈ₑ_)
@@ -181,7 +188,7 @@ module SetoidUtil where
   import Relation.Binary.SetoidReasoning as SetoidR
   open SetoidR public
 
-open SetoidUtil 
+open SetoidUtil
 
 ------------------------------------------------------------------------
 -- Standard pair laws
@@ -248,7 +255,7 @@ cong-match : ∀ {a b c} {f f' : BCC a c} {g g' : BCC b c}
   → ([ f , g ]) ≈ ([ f' , g' ])
 cong-match p q = uniq-match
   (trans match-injl (sym p))
-  (trans match-injr (sym q))  
+  (trans match-injr (sym q))
 
 comp-match : ∀ {a b c d} {h : BCC c d} {f  : BCC a c} {g : BCC b c}
   → h ∘ [ f , g ] ≈ [ h ∘ f , h ∘ g ]
@@ -310,8 +317,8 @@ matchE-injl {f = f} {g} = begin⟨ Hom _ _ ⟩
     ≈⟨ congl (trans (congl (uniq-pair idr idr)) idr) ⟩
   [ f , g ] ∘ injl
     ≈⟨ match-injl ⟩
-  f ∎    
-               
+  f ∎
+
 matchE-injr : ∀{a b c d} {f : BCC (a * b) d} {g : BCC (a * c) d}
     → matchE f g ∘ (id ⊗ injr) ≈ g
 -- symmetric to proof steps in matchE-injl
@@ -363,7 +370,7 @@ uniq-matchE p q = trans
         (congr (cong-match (cong-pair idl refl) (cong-pair idl refl)))
         distrfnb))
       idr))
-      
+
 ------------------------------------------------------------------------
 -- Standard-ish matchE laws
 
@@ -373,7 +380,7 @@ cong-matchE : ∀ {a b c d} {f f' : BCC (a * b) d} {g g' : BCC (a * c) d}
   → matchE f g ≈ matchE f' g'
 cong-matchE p q = uniq-matchE
   (trans p (sym matchE-injl))
-  (trans q (sym matchE-injr))  
+  (trans q (sym matchE-injr))
 
 comp-matchE : ∀ {a b c d e} {f : BCC (a * b) d} {g : BCC (a * c) d} {h : BCC d e}
   → h ∘ matchE f g ≈ matchE (h ∘ f) (h ∘ g)
@@ -422,7 +429,7 @@ post-comp-matchE {f = f} {g} {h} = begin⟨ Hom _ _ ⟩
               (trans
                 (congl (trans π₂-pair idl))
                 (sym (trans (congr idl) π₂-pair)))))))
-                
+
 ------------------------------------------------------------------------
 -- Standard case laws
 
@@ -482,9 +489,9 @@ post-comp-caseM {h = h} {x} {f} {g} = begin⟨ Hom _ _ ⟩
          (sym (trans (sym assoc) (trans (congl π₁-pair) idr)))
          (sym π₂-pair))
        (sym (comp-pair {h = < id , x ∘ h >}  {f = h ∘ π₁} {g = π₂}))) ⟩
-  matchE f g ∘ < h ∘ π₁ , π₂ > ∘  < id , x ∘ h > 
+  matchE f g ∘ < h ∘ π₁ , π₂ > ∘  < id , x ∘ h >
     ≈⟨ assoc ⟩
-  (matchE f g ∘ < h ∘ π₁ , π₂ >) ∘ < id , x ∘ h > 
+  (matchE f g ∘ < h ∘ π₁ , π₂ >) ∘ < id , x ∘ h >
     ≈⟨ congr (sym (uniq-matchE
       (sym (trans
         (congr
@@ -500,12 +507,12 @@ post-comp-caseM {h = h} {x} {f} {g} = begin⟨ Hom _ _ ⟩
          matchE-injr)))) ⟩
   matchE (f ∘ h ⊗ id) (g ∘ h ⊗ id) ∘ < id , x ∘ h >
     ≈⟨ refl ⟩
-  caseM (x ∘ h) (f ∘ h ⊗ id) (g ∘ h ⊗ id) ∎    
+  caseM (x ∘ h) (f ∘ h ⊗ id) (g ∘ h ⊗ id) ∎
 
 
 apply-case : ∀{a b c d e}
   {x : BCC a (b + c)} {y : BCC a d}
-  {f : BCC (a * b) (d ⇒ e)} {g : BCC (a * c) (d ⇒ e)} 
+  {f : BCC (a * b) (d ⇒ e)} {g : BCC (a * c) (d ⇒ e)}
   → apply ∘ < caseM x f g , y > ≈
     caseM x
       (apply ∘ < f , y ∘ π₁ >)
@@ -529,5 +536,3 @@ apply-case = sym (trans (sym comp-caseM) (congl (trans η*
           (sym (trans π₁-pair idl))
           (sym (trans π₁-pair idl))))
        π₁-pair
-
-

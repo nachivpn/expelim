@@ -60,6 +60,7 @@ FBiCCC = record
               ; id  = id
               ; _∘_ = _∘_
               ; assoc     = sym (assoc)
+              ; sym-assoc = assoc
               ; identityˡ = idl
               ; identityʳ = idr
               ; equiv     = record {
@@ -126,7 +127,7 @@ F-resp-≈ Eliminator {_} {_} {f , _} {g , _} p =
 Embedder : Functor DistrFBiCCC FOFBiCCC
 Embedder = record
              { F₀ = λ x → x
-             ; F₁ = λ (f , _) → f , _
+             ; F₁ = λ { (f , _) → f , _ }
              ; identity = refl
              ; homomorphism = refl
              ; F-resp-≈ = λ p → p
